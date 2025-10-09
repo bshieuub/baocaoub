@@ -28,6 +28,17 @@
           width: 100%;
           padding: 1rem;
           margin: 0;
+          font-size: 12px; /* Base font size for printing */
+        }
+        #print-area h3 {
+          font-size: 18px; /* Report title */
+        }
+        #print-area h4 {
+          font-size: 14px; /* Patient name */
+        }
+        #print-area p, #print-area span, #print-area div {
+            /* Force smaller font on elements, overriding Tailwind classes */
+            font-size: 12px !important; 
         }
         /* Cho phép nội dung báo cáo mở rộng để vừa với bản in */
         .modal-content-area {
@@ -55,11 +66,19 @@
       import React, { useState, useMemo, useEffect } from 'react';
       import ReactDOM from 'react-dom/client';
 
+      // --- CẤU HÌNH JSONBIN.IO ---
+      // HƯỚNG DẪN:
+      // 1. Tạo một Access Key trên jsonbin.io với quyền "Bin Read" và "Bin Update" cho Bin của bạn.
+      // 2. Dán Access Key đó vào biến JSONBIN_API_KEY bên dưới.
+      // 3. KHÔNG BAO GIỜ sử dụng X-Master-Key ở đây.
+      const JSONBIN_API_KEY = '$2a$10$EtyuDuQssZbNvRx8yQRyg.Zw5Jze/x67cpb8WR9hJgQSmq/lHFGVe'; // <-- DÁN ACCESS KEY CỦA BẠN VÀO ĐÂY
+      const JSONBIN_BIN_ID = '68e7706b43b1c97be95fdf1b';       // <-- THAY THẾ BẰNG Bin ID CỦA BẠN
+
       // --- Start of inlined code from types.js ---
       const AdmissionStatus = {
         INPATIENT: 'Nội trú',
         DISCHARGED: 'Ra viện',
-        DISCHARGE_TODAY: 'Dự kiến ra viện hôm nay',
+        DISCHARGE_TODAY: 'Dự kiến ra viện',
       };
       
       // --- Start of inlined code from components/Modal.js ---
@@ -109,13 +128,11 @@
               patientCode: patientToEdit.patientCode,
               roomNumber: patientToEdit.roomNumber,
               reason: patientToEdit.reason,
-              // Lấy chẩn đoán và ghi chú mới nhất từ lịch sử
               diagnosis: patientToEdit.diagnosis,
               status: patientToEdit.status,
               notes: patientToEdit.notes,
             });
           } else {
-             // Reset form cho bệnh nhân mới
             setFormData({
               name: '',
               birthYear: '',
@@ -274,77 +291,143 @@
         );
       };
 
-      // --- Start of inlined code from App.js ---
-      const initialPatients = [
-          { 
-            id: '1', name: 'Nguyễn Văn An', birthYear: 1985, patientCode: 'BN001', roomNumber: 'P101', 
-            reason: 'Đau bụng cấp', diagnosis: 'Viêm ruột thừa', status: AdmissionStatus.INPATIENT, 
-            notes: 'Theo dõi sát', 
-            history: [{ date: '2023-10-26T10:00:00Z', diagnosis: 'Viêm ruột thừa', notes: 'Theo dõi sát' }]
-          },
-          { 
-            id: '2', name: 'Trần Thị Bình', birthYear: 1992, patientCode: 'BN002', roomNumber: 'P102', 
-            reason: 'Ho kéo dài', diagnosis: 'Viêm phế quản', status: AdmissionStatus.DISCHARGE_TODAY, 
-            notes: 'Kê đơn thuốc 7 ngày',
-            history: [{ date: '2023-10-26T11:30:00Z', diagnosis: 'Viêm phế quản', notes: 'Kê đơn thuốc 7 ngày' }]
-          },
-          { 
-            id: '3', name: 'Lê Hoàng Cường', birthYear: 1970, patientCode: 'BN003', roomNumber: 'P205', 
-            reason: 'Khó thở', diagnosis: 'Hen suyễn', status: AdmissionStatus.INPATIENT, 
-            notes: 'Cần thở oxy',
-            history: [{ date: '2023-10-25T15:00:00Z', diagnosis: 'Hen suyễn', notes: 'Cần thở oxy' }]
-          },
-          { 
-            id: '4', name: 'Phạm Thị Dung', birthYear: 2001, patientCode: 'BN004', roomNumber: 'P310', 
-            reason: 'Gãy tay', diagnosis: 'Gãy xương cẳng tay', status: AdmissionStatus.DISCHARGED, 
-            notes: 'Đã bó bột, tái khám sau 2 tuần',
-            history: [{ date: '2023-10-24T09:00:00Z', diagnosis: 'Gãy xương cẳng tay', notes: 'Đã bó bột, tái khám sau 2 tuần' }]
-          },
-      ];
+      // --- New component: SyncStatusIndicator ---
+      const SyncStatusIndicator = ({ status, error }) => {
+          if (status === 'idle') return null;
 
-      const StatusBadge = ({ status }) => {
-          const statusClasses = useMemo(() => {
+          const getStatusContent = () => {
               switch (status) {
-                  case AdmissionStatus.INPATIENT:
-                      return 'bg-blue-100 text-blue-800';
-                  case AdmissionStatus.DISCHARGE_TODAY:
-                      return 'bg-yellow-100 text-yellow-800';
-                  case AdmissionStatus.DISCHARGED:
-                      return 'bg-green-100 text-green-800';
-                  default:
-                      return 'bg-gray-100 text-gray-800';
+                  case 'loading': return { text: 'Đang tải...', icon: 'animate-spin h-4 w-4 mr-2', color: 'text-gray-600' };
+                  case 'syncing': return { text: 'Đang đồng bộ...', icon: 'animate-spin h-4 w-4 mr-2', color: 'text-gray-600' };
+                  case 'success': return { text: 'Đã đồng bộ', icon: 'h-4 w-4 mr-2', color: 'text-green-600' };
+                  case 'error': return { text: `Lỗi đồng bộ: ${error}`, icon: 'h-4 w-4 mr-2', color: 'text-red-600' };
+                  default: return null;
               }
-          }, [status]);
+          };
+
+          const content = getStatusContent();
+          if (!content) return null;
+
+          const iconMap = {
+            spinner: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>,
+            success: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>,
+            error: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>,
+          };
+          
+          let icon;
+          if (status === 'loading' || status === 'syncing') icon = iconMap.spinner;
+          else if (status === 'success') icon = iconMap.success;
+          else if (status === 'error') icon = iconMap.error;
 
           return (
-              <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusClasses}`}>
-                  {status}
-              </span>
+              <div className={`flex items-center text-xs mt-1 ${content.color}`}>
+                  <div className={content.icon}>{icon}</div>
+                  <span>{content.text}</span>
+              </div>
           );
       };
 
-      const App = () => {
-          const [patients, setPatients] = useState(() => {
-            try {
-              const savedPatients = localStorage.getItem('patientsData');
-              return savedPatients ? JSON.parse(savedPatients) : initialPatients;
-            } catch (error) {
-              console.error("Lỗi khi đọc dữ liệu từ localStorage:", error);
-              return initialPatients;
-            }
-          });
+      // --- Start of inlined code from App.js ---
+      const StatusBadge = ({ status }) => {
+          const statusClasses = useMemo(() => {
+              switch (status) {
+                  case AdmissionStatus.INPATIENT: return 'bg-blue-100 text-blue-800';
+                  case AdmissionStatus.DISCHARGE_TODAY: return 'bg-yellow-100 text-yellow-800';
+                  case AdmissionStatus.DISCHARGED: return 'bg-green-100 text-green-800';
+                  default: return 'bg-gray-100 text-gray-800';
+              }
+          }, [status]);
 
+          return <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusClasses}`}>{status}</span>;
+      };
+
+      const App = () => {
+          const [patients, setPatients] = useState([]);
           const [isFormModalOpen, setIsFormModalOpen] = useState(false);
           const [isReportModalOpen, setIsReportModalOpen] = useState(false);
           const [patientToEdit, setPatientToEdit] = useState(null);
+          const [syncStatus, setSyncStatus] = useState('idle'); // idle, loading, syncing, success, error
+          const [errorMessage, setErrorMessage] = useState('');
+          const [searchTerm, setSearchTerm] = useState('');
+          const [sortBy, setSortBy] = useState('roomNumber');
+
+          const JSONBIN_API_URL = 'https://api.jsonbin.io/v3/b/';
+          
+          const fetchData = async () => {
+              if (!JSONBIN_API_KEY || !JSONBIN_BIN_ID || JSONBIN_API_KEY === 'PASTE_YOUR_X_ACCESS_KEY_HERE') {
+                  setSyncStatus('error');
+                  setErrorMessage('Vui lòng cấu hình API Key và Bin ID trong code.');
+                  return;
+              }
+              setSyncStatus('loading');
+              setErrorMessage('');
+              try {
+                  const response = await fetch(`${JSONBIN_API_URL}${JSONBIN_BIN_ID}/latest`, {
+                      method: 'GET',
+                      headers: { 'X-Access-Key': JSONBIN_API_KEY }, // SỬ DỤNG X-Access-Key
+                  });
+                  if (!response.ok) throw new Error(`Lỗi ${response.status}: ${response.statusText}`);
+                  const data = await response.json();
+                  setPatients(data.record.patients || []);
+                  setSyncStatus('success');
+              } catch (error) {
+                  console.error("Lỗi khi tải dữ liệu từ Jsonbin:", error);
+                  setSyncStatus('error');
+                  setErrorMessage(error.message || 'Không thể tải dữ liệu.');
+              }
+          };
+
+          const updateData = async (newPatientsData) => {
+              if (!JSONBIN_API_KEY || !JSONBIN_BIN_ID || JSONBIN_API_KEY === 'PASTE_YOUR_X_ACCESS_KEY_HERE') {
+                  throw new Error('Chưa cấu hình API Key hoặc Bin ID.');
+              }
+              setSyncStatus('syncing');
+              setErrorMessage('');
+              try {
+                  const response = await fetch(`${JSONBIN_API_URL}${JSONBIN_BIN_ID}`, {
+                      method: 'PUT',
+                      headers: {
+                          'Content-Type': 'application/json',
+                          'X-Access-Key': JSONBIN_API_KEY, // SỬ DỤNG X-Access-Key
+                      },
+                      body: JSON.stringify({ patients: newPatientsData }),
+                  });
+                  if (!response.ok) throw new Error(`Lỗi ${response.status}: ${response.statusText}`);
+                  setSyncStatus('success');
+              } catch (error) {
+                  console.error("Lỗi khi cập nhật dữ liệu lên Jsonbin:", error);
+                  setSyncStatus('error');
+                  setErrorMessage(error.message || 'Không thể đồng bộ dữ liệu.');
+                  throw error; // Re-throw để hàm gọi có thể xử lý
+              }
+          };
           
           useEffect(() => {
-            try {
-              localStorage.setItem('patientsData', JSON.stringify(patients));
-            } catch (error) {
-              console.error("Lỗi khi lưu dữ liệu vào localStorage:", error);
+              fetchData();
+          }, []);
+          
+          useEffect(() => {
+            if (syncStatus === 'success') {
+              const timer = setTimeout(() => setSyncStatus('idle'), 3000);
+              return () => clearTimeout(timer);
             }
-          }, [patients]);
+          }, [syncStatus]);
+          
+          const filteredAndSortedPatients = useMemo(() => {
+            return patients
+                .filter(p =>
+                    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    p.patientCode.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                .sort((a, b) => {
+                    if (sortBy === 'name') {
+                        return a.name.localeCompare(b.name, 'vi');
+                    }
+                    // Default sort by roomNumber
+                    return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true });
+                });
+          }, [patients, searchTerm, sortBy]);
+
 
           const handleAddPatientClick = () => {
               setPatientToEdit(null);
@@ -356,35 +439,38 @@
               setIsFormModalOpen(true);
           };
 
-          const handleDeletePatient = (patientId) => {
+          const handleDeletePatient = async (patientId) => {
               if (window.confirm('Bạn có chắc chắn muốn xóa bệnh nhân này?')) {
-                  setPatients(patients.filter(p => p.id !== patientId));
+                  const originalPatients = [...patients];
+                  const newPatients = patients.filter(p => p.id !== patientId);
+                  setPatients(newPatients); // Cập nhật giao diện trước (optimistic update)
+                  try {
+                      await updateData(newPatients);
+                  } catch (error) {
+                      setPatients(originalPatients); // Hoàn tác nếu có lỗi
+                  }
               }
           };
           
-          const handleSavePatient = (patientData) => {
+          const handleSavePatient = async (patientData) => {
+              const originalPatients = [...patients];
+              let newPatients;
               if (patientData.id) {
-                  // Chỉnh sửa bệnh nhân
-                  setPatients(patients.map(p => {
+                  newPatients = patients.map(p => {
                       if (p.id === patientData.id) {
                           const newHistoryEntry = {
                               date: new Date().toISOString(),
                               diagnosis: patientData.diagnosis,
                               notes: patientData.notes,
                           };
-
-                          // Chỉ thêm vào lịch sử nếu có thay đổi
-                          const latestHistory = p.history[p.history.length - 1] || {};
+                          const latestHistory = p.history?.[p.history.length - 1] || {};
                           const hasChanged = latestHistory.diagnosis !== newHistoryEntry.diagnosis || latestHistory.notes !== newHistoryEntry.notes;
-                          
-                          const updatedHistory = hasChanged ? [...p.history, newHistoryEntry] : p.history;
-
+                          const updatedHistory = hasChanged ? [...(p.history || []), newHistoryEntry] : (p.history || []);
                           return { ...p, ...patientData, history: updatedHistory };
                       }
                       return p;
-                  }));
+                  });
               } else {
-                  // Thêm bệnh nhân mới
                   const newHistoryEntry = {
                       date: new Date().toISOString(),
                       diagnosis: patientData.diagnosis,
@@ -395,24 +481,34 @@
                       id: crypto.randomUUID(),
                       history: [newHistoryEntry],
                   };
-                  setPatients([newPatient, ...patients]);
+                  newPatients = [newPatient, ...patients];
               }
+              setPatients(newPatients); // Optimistic update
               setIsFormModalOpen(false);
+              
+              try {
+                  await updateData(newPatients);
+              } catch(error) {
+                  setPatients(originalPatients); // Hoàn tác nếu có lỗi
+              }
           };
 
           return (
               <div className="min-h-screen bg-gray-100 text-gray-800 flex flex-col">
                   <header className="bg-white shadow-md no-print">
                       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                          <h1 className="text-2xl font-bold text-indigo-600">Quản lý bệnh nhân nội trú Ung bướu</h1>
-                          <div className="space-x-3">
+                          <div>
+                            <h1 className="text-2xl font-bold text-indigo-600">Quản lý bệnh nhân nội trú Ung bướu</h1>
+                            <SyncStatusIndicator status={syncStatus} error={errorMessage} />
+                          </div>
+                          <div className="flex items-center space-x-2 sm:space-x-3">
                                <button onClick={() => setIsReportModalOpen(true)} className="bg-green-500 text-white px-4 py-2 rounded-md shadow hover:bg-green-600 transition-colors flex items-center space-x-2">
                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
-                                  <span>Xem Báo Cáo</span>
+                                  <span className="hidden sm:inline">Xem Báo Cáo</span>
                               </button>
                               <button onClick={handleAddPatientClick} className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow hover:bg-indigo-700 transition-colors flex items-center space-x-2">
                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
-                                   <span>Thêm Bệnh Nhân</span>
+                                   <span className="hidden sm:inline">Thêm Bệnh Nhân</span>
                               </button>
                           </div>
                       </div>
@@ -420,6 +516,34 @@
 
                   <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex-grow no-print">
                       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                          <div className="p-4 bg-gray-50 border-b flex flex-col sm:flex-row items-center gap-4">
+                              <div className="relative w-full sm:w-2/3 md:w-1/2">
+                                  <input 
+                                      type="search" 
+                                      placeholder="Tìm theo tên hoặc MSBN..." 
+                                      value={searchTerm}
+                                      onChange={(e) => setSearchTerm(e.target.value)}
+                                      className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  />
+                                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                      <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                                      </svg>
+                                  </div>
+                              </div>
+                              <div className="flex items-center gap-2 w-full sm:w-auto">
+                                  <label htmlFor="sort" className="text-sm font-medium text-gray-600">Sắp xếp:</label>
+                                  <select 
+                                      id="sort"
+                                      value={sortBy}
+                                      onChange={(e) => setSortBy(e.target.value)}
+                                      className="border rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  >
+                                      <option value="roomNumber">Số Phòng</option>
+                                      <option value="name">Họ Tên</option>
+                                  </select>
+                              </div>
+                          </div>
                           <div className="overflow-x-auto">
                               <table className="w-full text-sm text-left text-gray-500">
                                   <thead className="text-xs text-gray-700 uppercase bg-gray-50">
@@ -433,7 +557,7 @@
                                       </tr>
                                   </thead>
                                   <tbody>
-                                      {patients.map(patient => (
+                                      {filteredAndSortedPatients.map(patient => (
                                           <tr key={patient.id} className="bg-white border-b hover:bg-gray-50">
                                               <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                                                   {patient.name} <span className="text-gray-500">({patient.birthYear})</span>
@@ -453,13 +577,13 @@
                                   </tbody>
                               </table>
                           </div>
+                           {filteredAndSortedPatients.length === 0 && syncStatus !== 'loading' && (
+                              <div className="text-center py-16 text-gray-500">
+                                  <p>Không tìm thấy bệnh nhân nào.</p>
+                                  {searchTerm === '' && <p>Nhấn "Thêm Bệnh Nhân" để bắt đầu.</p>}
+                              </div>
+                          )}
                       </div>
-                      {patients.length === 0 && (
-                          <div className="text-center py-16 text-gray-500">
-                              <p>Chưa có thông tin bệnh nhân nào.</p>
-                              <p>Nhấn "Thêm Bệnh Nhân" để bắt đầu.</p>
-                          </div>
-                      )}
                   </main>
 
                   <footer className="text-center py-4 text-xs text-gray-500 no-print">
