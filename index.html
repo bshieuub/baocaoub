@@ -341,6 +341,64 @@
           return <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusClasses}`}>{status}</span>;
       };
 
+      const PatientTable = ({ patients, onEdit, onDelete }) => {
+        return (
+          <div className="md:border-t">
+              {patients.map((patient, index) => (
+                  <div key={patient.id} className="bg-white p-4 mb-4 rounded-lg shadow md:shadow-none md:rounded-none md:mb-0 md:grid md:grid-cols-[50px_1fr_120px_100px_1fr_120px_120px] md:gap-x-6 md:px-6 md:py-4 md:border-b hover:bg-gray-50 items-center">
+                      
+                      {/* STT (Desktop) */}
+                      <div className="hidden md:block text-center text-gray-500">{index + 1}</div>
+                      
+                      {/* --- MOBILE CARD VIEW --- */}
+                      <div className="md:hidden">
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-bold text-lg text-gray-800 mb-2 pr-2">
+                            {index + 1}. {patient.name} <span className="font-normal text-gray-500">({patient.birthYear})</span>
+                          </h3>
+                          <div className="flex justify-end items-center space-x-3 flex-shrink-0 pl-2">
+                            <button onClick={() => onEdit(patient)} className="font-medium text-indigo-600 hover:text-indigo-800">Sửa</button>
+                            <button onClick={() => onDelete(patient.id)} className="font-medium text-red-600 hover:text-red-800">Xóa</button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                              <div>
+                                  <p className="text-gray-500">MSBN</p>
+                                  <p className="font-medium">{patient.patientCode}</p>
+                              </div>
+                              <div>
+                                  <p className="text-gray-500">Phòng</p>
+                                  <p className="font-medium">{patient.roomNumber}</p>
+                              </div>
+                              <div className="col-span-2">
+                                  <p className="text-gray-500">Tình trạng</p>
+                                  <div className="font-medium"><StatusBadge status={patient.status} /></div>
+                              </div>
+                              <div className="col-span-2">
+                                  <p className="text-gray-500">Chẩn đoán</p>
+                                  <p className="font-medium">{patient.diagnosis}</p>
+                              </div>
+                          </div>
+                      </div>
+                      
+                      {/* --- DESKTOP TABLE VIEW --- */}
+                      <div className="hidden md:block font-medium text-gray-900 whitespace-nowrap">
+                        {patient.name} <span className="text-gray-500">({patient.birthYear})</span>
+                      </div>
+                      <div className="hidden md:block">{patient.patientCode}</div>
+                      <div className="hidden md:block">{patient.roomNumber}</div>
+                      <div className="hidden md:block">{patient.diagnosis}</div>
+                      <div className="hidden md:block"><StatusBadge status={patient.status} /></div>
+                      <div className="hidden md:flex justify-end items-center space-x-2">
+                        <button onClick={() => onEdit(patient)} className="font-medium text-indigo-600 hover:text-indigo-800">Sửa</button>
+                        <button onClick={() => onDelete(patient.id)} className="font-medium text-red-600 hover:text-red-800">Xóa</button>
+                      </div>
+                  </div>
+              ))}
+          </div>
+        );
+      };
+
       const App = () => {
           const [patients, setPatients] = useState([]);
           const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -413,19 +471,29 @@
             }
           }, [syncStatus]);
           
-          const filteredAndSortedPatients = useMemo(() => {
-            return patients
+          const { activePatients, dischargedPatients } = useMemo(() => {
+            const filtered = patients
                 .filter(p =>
                     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     p.patientCode.toLowerCase().includes(searchTerm.toLowerCase())
-                )
-                .sort((a, b) => {
+                );
+            
+            const active = filtered
+              .filter(p => p.status !== AdmissionStatus.DISCHARGED)
+              .sort((a, b) => {
                     if (sortBy === 'name') {
                         return a.name.localeCompare(b.name, 'vi');
                     }
                     // Default sort by roomNumber
                     return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true });
                 });
+            
+            const discharged = filtered
+              .filter(p => p.status === AdmissionStatus.DISCHARGED)
+              .sort((a, b) => a.name.localeCompare(b.name, 'vi')); // Sort discharged by name
+            
+            return { activePatients: active, dischargedPatients: discharged };
+
           }, [patients, searchTerm, sortBy]);
 
 
@@ -492,6 +560,18 @@
                   setPatients(originalPatients); // Hoàn tác nếu có lỗi
               }
           };
+          
+          const DesktopHeader = () => (
+            <div className="hidden md:grid md:grid-cols-[50px_1fr_120px_100px_1fr_120px_120px] gap-x-6 px-6 py-3 text-xs text-gray-700 uppercase bg-gray-50 font-medium items-center">
+                <span className="text-center">STT</span>
+                <span>Họ Tên</span>
+                <span>MSBN</span>
+                <span>Phòng</span>
+                <span>Chẩn Đoán</span>
+                <span>Tình Trạng</span>
+                <span className="text-right">Hành Động</span>
+            </div>
+          );
 
           return (
               <div className="min-h-screen bg-gray-100 text-gray-800 flex flex-col">
@@ -532,7 +612,7 @@
                                   </div>
                               </div>
                               <div className="flex items-center gap-2 w-full sm:w-auto">
-                                  <label htmlFor="sort" className="text-sm font-medium text-gray-600">Sắp xếp:</label>
+                                  <label htmlFor="sort" className="text-sm font-medium text-gray-600">Sắp xếp (đang điều trị):</label>
                                   <select 
                                       id="sort"
                                       value={sortBy}
@@ -544,76 +624,39 @@
                                   </select>
                               </div>
                           </div>
+
                           <div className="overflow-x-auto">
-                              {/* Desktop Header */}
-                              <div className="hidden md:grid md:grid-cols-[50px_1fr_120px_100px_1fr_120px_120px] gap-x-6 px-6 py-3 text-xs text-gray-700 uppercase bg-gray-50 font-medium items-center">
-                                  <span className="text-center">STT</span>
-                                  <span>Họ Tên</span>
-                                  <span>MSBN</span>
-                                  <span>Phòng</span>
-                                  <span>Chẩn Đoán</span>
-                                  <span>Tình Trạng</span>
-                                  <span className="text-right">Hành Động</span>
+                              {/* Active Patients Section */}
+                              <div className="px-6 pt-6 pb-2">
+                                  <h2 className="text-xl font-semibold text-gray-800">Bệnh nhân đang điều trị ({activePatients.length})</h2>
                               </div>
-                              {/* Patient List */}
-                              <div className="md:border-t">
-                                  {filteredAndSortedPatients.map((patient, index) => (
-                                      <div key={patient.id} className="bg-white p-4 mb-4 rounded-lg shadow md:shadow-none md:rounded-none md:mb-0 md:grid md:grid-cols-[50px_1fr_120px_100px_1fr_120px_120px] md:gap-x-6 md:px-6 md:py-4 md:border-b hover:bg-gray-50 items-center">
-                                          
-                                          {/* STT (Desktop) */}
-                                          <div className="hidden md:block text-center text-gray-500">{index + 1}</div>
-                                          
-                                          {/* --- MOBILE CARD VIEW --- */}
-                                          <div className="md:hidden">
-                                            <div className="flex justify-between items-start">
-                                              <h3 className="font-bold text-lg text-gray-800 mb-2 pr-2">
-                                                {index + 1}. {patient.name} <span className="font-normal text-gray-500">({patient.birthYear})</span>
-                                              </h3>
-                                              <div className="flex justify-end items-center space-x-3 flex-shrink-0 pl-2">
-                                                <button onClick={() => handleEditPatientClick(patient)} className="font-medium text-indigo-600 hover:text-indigo-800">Sửa</button>
-                                                <button onClick={() => handleDeletePatient(patient.id)} className="font-medium text-red-600 hover:text-red-800">Xóa</button>
-                                              </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                                                  <div>
-                                                      <p className="text-gray-500">MSBN</p>
-                                                      <p className="font-medium">{patient.patientCode}</p>
-                                                  </div>
-                                                  <div>
-                                                      <p className="text-gray-500">Phòng</p>
-                                                      <p className="font-medium">{patient.roomNumber}</p>
-                                                  </div>
-                                                  <div className="col-span-2">
-                                                      <p className="text-gray-500">Tình trạng</p>
-                                                      <div className="font-medium"><StatusBadge status={patient.status} /></div>
-                                                  </div>
-                                                  <div className="col-span-2">
-                                                      <p className="text-gray-500">Chẩn đoán</p>
-                                                      <p className="font-medium">{patient.diagnosis}</p>
-                                                  </div>
-                                              </div>
-                                          </div>
-                                          
-                                          {/* --- DESKTOP TABLE VIEW --- */}
-                                          <div className="hidden md:block font-medium text-gray-900 whitespace-nowrap">
-                                            {patient.name} <span className="text-gray-500">({patient.birthYear})</span>
-                                          </div>
-                                          <div className="hidden md:block">{patient.patientCode}</div>
-                                          <div className="hidden md:block">{patient.roomNumber}</div>
-                                          <div className="hidden md:block">{patient.diagnosis}</div>
-                                          <div className="hidden md:block"><StatusBadge status={patient.status} /></div>
-                                          <div className="hidden md:flex justify-end items-center space-x-2">
-                                            <button onClick={() => handleEditPatientClick(patient)} className="font-medium text-indigo-600 hover:text-indigo-800">Sửa</button>
-                                            <button onClick={() => handleDeletePatient(patient.id)} className="font-medium text-red-600 hover:text-red-800">Xóa</button>
-                                          </div>
-                                      </div>
-                                  ))}
-                              </div>
+                              <DesktopHeader />
+                              <PatientTable patients={activePatients} onEdit={handleEditPatientClick} onDelete={handleDeletePatient} />
+                              {syncStatus !== 'loading' && activePatients.length === 0 && (
+                                <div className="text-center py-10 text-gray-500">
+                                  <p>{searchTerm ? `Không có bệnh nhân đang điều trị khớp với "${searchTerm}".` : 'Không có bệnh nhân nào đang điều trị.'}</p>
+                                </div>
+                              )}
                           </div>
-                           {filteredAndSortedPatients.length === 0 && syncStatus !== 'loading' && (
+
+                          <div className="mt-6 border-t overflow-x-auto">
+                              {/* Discharged Patients Section */}
+                              <div className="px-6 pt-6 pb-2">
+                                  <h2 className="text-xl font-semibold text-gray-800">Bệnh nhân đã ra viện ({dischargedPatients.length})</h2>
+                              </div>
+                              <DesktopHeader />
+                              <PatientTable patients={dischargedPatients} onEdit={handleEditPatientClick} onDelete={handleDeletePatient} />
+                               {syncStatus !== 'loading' && dischargedPatients.length === 0 && (
+                                <div className="text-center py-10 text-gray-500">
+                                  <p>{searchTerm ? `Không có bệnh nhân đã ra viện khớp với "${searchTerm}".` : 'Chưa có bệnh nhân nào ra viện.'}</p>
+                                </div>
+                              )}
+                          </div>
+
+                          {patients.length === 0 && searchTerm === '' && syncStatus !== 'loading' && (
                               <div className="text-center py-16 text-gray-500">
-                                  <p>Không tìm thấy bệnh nhân nào.</p>
-                                  {searchTerm === '' && <p>Nhấn "Thêm Bệnh Nhân" để bắt đầu.</p>}
+                                  <p>Chưa có bệnh nhân nào trong hệ thống.</p>
+                                  <p>Nhấn "Thêm Bệnh Nhân" để bắt đầu.</p>
                               </div>
                           )}
                       </div>
