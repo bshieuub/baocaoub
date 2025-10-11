@@ -234,9 +234,11 @@
 
       // --- Start of inlined code from components/ReportView.js ---
       const ReportView = ({ patients, onClose }) => {
-        const patientsToReport = patients.filter(
-          p => p.status === AdmissionStatus.INPATIENT || p.status === AdmissionStatus.DISCHARGE_TODAY
-        );
+        const patientsToReport = patients
+          .filter(
+            p => p.status === AdmissionStatus.INPATIENT || p.status === AdmissionStatus.DISCHARGE_TODAY
+          )
+          .sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }));
 
         const handlePrint = () => {
           window.print();
