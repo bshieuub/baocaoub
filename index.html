@@ -117,7 +117,7 @@
           reason: '',
           diagnosis: '',
           status: AdmissionStatus.INPATIENT,
-          notes: '',
+          newNote: '', // Changed from 'notes'
         });
 
         useEffect(() => {
@@ -128,11 +128,12 @@
               patientCode: patientToEdit.patientCode,
               roomNumber: patientToEdit.roomNumber,
               reason: patientToEdit.reason,
-              diagnosis: patientToEdit.diagnosis,
+              diagnosis: patientToEdit.diagnosis, // Keep latest diagnosis
               status: patientToEdit.status,
-              notes: patientToEdit.notes,
+              newNote: '', // Always start with an empty note field
             });
           } else {
+            // Logic for new patient
             setFormData({
               name: '',
               birthYear: '',
@@ -141,7 +142,7 @@
               reason: '',
               diagnosis: '',
               status: AdmissionStatus.INPATIENT,
-              notes: '',
+              newNote: '',
             });
           }
         }, [patientToEdit]);
@@ -160,7 +161,9 @@
           if (patientToEdit) {
             onSave({ ...patientData, id: patientToEdit.id });
           } else {
-            onSave(patientData);
+            // For new patients, the initial diagnosis and note become the first history entry.
+            // We'll call the `newNote` field `notes` so the save handler can be consistent.
+            onSave({ ...patientData, notes: patientData.newNote });
           }
         };
         
@@ -203,8 +206,8 @@
               <textarea name="diagnosis" value={formData.diagnosis} onChange={handleChange} rows={3} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
             </div>
              <div>
-              <label className="block text-sm font-medium text-gray-700">Ghi chú / Bàn giao (Mới)</label>
-              <textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+              <label className="block text-sm font-medium text-gray-700">Ghi chú / Diễn biến mới</label>
+              <textarea name="newNote" value={formData.newNote} onChange={handleChange} placeholder="Thêm diễn biến, y lệnh, hoặc thông tin bàn giao mới..." rows={3} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
             </div>
 
             {patientToEdit && sortedHistory.length > 0 && (
@@ -226,7 +229,7 @@
 
             <div className="flex justify-end space-x-3 pt-4">
               <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors">Hủy</button>
-              <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors">{patientToEdit ? 'Cập nhật' : 'Lưu'}</button>
+              <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors">{patientToEdit ? 'Cập nhật' : 'Thêm mới'}</button>
             </div>
           </form>
         );
@@ -268,7 +271,7 @@
                               <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
                                   <p className="break-words"><span className="font-semibold text-gray-600">Lý do vào viện:</span> {patient.reason}</p>
                                   <p className="break-words"><span className="font-semibold text-gray-600">Chẩn đoán:</span> {patient.diagnosis}</p>
-                                  <p className="col-span-2 break-words"><span className="font-semibold text-gray-600">Ghi chú:</span> {patient.notes}</p>
+                                  <p className="col-span-2 break-words"><span className="font-semibold text-gray-600">Ghi chú gần nhất:</span> {patient.notes}</p>
                               </div>
                           </div>
                       ))
@@ -525,26 +528,37 @@
           const handleSavePatient = async (patientData) => {
               const originalPatients = [...patients];
               let newPatients;
+
+              // This is an existing patient being updated
               if (patientData.id) {
+                  const newHistoryEntry = {
+                      date: new Date().toISOString(),
+                      diagnosis: patientData.diagnosis,
+                      notes: patientData.newNote, // Use newNote from form
+                  };
+
                   newPatients = patients.map(p => {
                       if (p.id === patientData.id) {
-                          const newHistoryEntry = {
-                              date: new Date().toISOString(),
-                              diagnosis: patientData.diagnosis,
-                              notes: patientData.notes,
+                          // Create a new history array with the new entry
+                          const updatedHistory = [...(p.history || []), newHistoryEntry];
+                          
+                          // Return the updated patient object
+                          return { 
+                              ...p, 
+                              ...patientData, 
+                              diagnosis: patientData.diagnosis, // Update top-level diagnosis
+                              notes: patientData.newNote,       // Update top-level notes
+                              history: updatedHistory 
                           };
-                          const latestHistory = p.history?.[p.history.length - 1] || {};
-                          const hasChanged = latestHistory.diagnosis !== newHistoryEntry.diagnosis || latestHistory.notes !== newHistoryEntry.notes;
-                          const updatedHistory = hasChanged ? [...(p.history || []), newHistoryEntry] : (p.history || []);
-                          return { ...p, ...patientData, history: updatedHistory };
                       }
                       return p;
                   });
               } else {
+                  // This is a new patient
                   const newHistoryEntry = {
                       date: new Date().toISOString(),
                       diagnosis: patientData.diagnosis,
-                      notes: patientData.notes,
+                      notes: patientData.notes, // The form passes `newNote` as `notes`
                   };
                   const newPatient = {
                       ...patientData,
@@ -553,13 +567,14 @@
                   };
                   newPatients = [newPatient, ...patients];
               }
+              
               setPatients(newPatients); // Optimistic update
               setIsFormModalOpen(false);
               
               try {
                   await updateData(newPatients);
               } catch(error) {
-                  setPatients(originalPatients); // Hoàn tác nếu có lỗi
+                  setPatients(originalPatients); // Revert on error
               }
           };
           
@@ -668,7 +683,7 @@
                       bshieuubdl@gmail.com
                   </footer>
 
-                  <Modal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} title={patientToEdit ? 'Chỉnh Sửa Thông Tin Bệnh Nhân' : 'Thêm Bệnh Nhân Mới'}>
+                  <Modal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} title={patientToEdit ? 'Cập Nhật Diễn Biến Bệnh Nhân' : 'Thêm Bệnh Nhân Mới'}>
                       <PatientForm onSave={handleSavePatient} onClose={() => setIsFormModalOpen(false)} patientToEdit={patientToEdit} />
                   </Modal>
 
