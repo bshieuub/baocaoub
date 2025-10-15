@@ -12,39 +12,77 @@
         font-family: 'Inter', sans-serif;
       }
       @media print {
+        /* Define page layout for printing */
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+
+        body {
+            background-color: #fff !important; /* Ensure white background */
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Hide all elements specifically marked as non-printable.
+           This includes the main app header, footer, buttons, etc. */
         .no-print {
             display: none !important;
         }
-        body * {
-          visibility: hidden;
+
+        /* The following rules reset the modal's styling so its content
+           can flow like a normal document instead of being a fixed-size overlay. */
+
+        /* 1. Reset the modal's full-screen overlay */
+        .fixed.inset-0 {
+            position: static !important;
+            background: none !important;
+            padding: 0 !important;
         }
-        #print-area, #print-area * {
-          visibility: visible;
-        }
-        #print-area {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          padding: 1rem;
-          margin: 0;
-          font-size: 12px; /* Base font size for printing */
-        }
-        #print-area h3 {
-          font-size: 18px; /* Report title */
-        }
-        #print-area h4 {
-          font-size: 14px; /* Patient name */
-        }
-        #print-area p, #print-area span, #print-area div {
-            /* Force smaller font on elements, overriding Tailwind classes */
-            font-size: 12px !important; 
-        }
-        /* Cho phép nội dung báo cáo mở rộng để vừa với bản in */
-        .modal-content-area {
-            overflow-y: visible !important;
+
+        /* 2. Reset the modal's main dialog box (the white container) */
+        .fixed.inset-0 > div {
+            width: auto !important;
+            max-width: none !important;
             height: auto !important;
             max-height: none !important;
+            box-shadow: none !important;
+            border: none !important;
+            display: block !important; /* Crucial: This disables flexbox constraints */
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* 3. Reset the modal's content area to allow it to expand */
+        .modal-content-area {
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+            padding: 0 !important;
+        }
+
+        /* 4. Let the print area flow naturally within the document */
+        #print-area {
+            padding: 0; /* Page margins are handled by @page */
+            margin: 0;
+            font-size: 11pt; /* Use points for better print scaling */
+        }
+        
+        /* Ensure patient blocks do not get split across pages */
+        #print-area .break-inside-avoid {
+            page-break-inside: avoid;
+        }
+
+        /* Specific font sizes for report elements */
+        #print-area h3 {
+          font-size: 16pt;
+        }
+        #print-area h4 {
+          font-size: 13pt;
+        }
+        #print-area p, #print-area span, #print-area div {
+            /* !important is needed to override inline tailwind styles */
+            font-size: 11pt !important;
         }
       }
     </style>
@@ -296,6 +334,53 @@
         );
       };
 
+      // --- New component: ConfirmModal ---
+      const ConfirmModal = ({ isOpen, onClose, onConfirm, title, children }) => {
+        if (!isOpen) return null;
+
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+              <div className="p-6">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                      {title}
+                    </h3>
+                    <div className="mt-2">
+                      <div className="text-sm text-gray-500">
+                        {children}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse rounded-b-lg">
+                <button
+                  type="button"
+                  onClick={onConfirm}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Xác nhận Xóa
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
       // --- New component: SyncStatusIndicator ---
       const SyncStatusIndicator = ({ status, error }) => {
           if (status === 'idle') return null;
@@ -363,7 +448,7 @@
                           </h3>
                           <div className="flex justify-end items-center space-x-3 flex-shrink-0 pl-2">
                             <button onClick={() => onEdit(patient)} className="font-medium text-indigo-600 hover:text-indigo-800">Sửa</button>
-                            <button onClick={() => onDelete(patient.id)} className="font-medium text-red-600 hover:text-red-800">Xóa</button>
+                            <button onClick={() => onDelete(patient)} className="font-medium text-red-600 hover:text-red-800">Xóa</button>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -396,7 +481,7 @@
                       <div className="hidden md:block"><StatusBadge status={patient.status} /></div>
                       <div className="hidden md:flex justify-end items-center space-x-2">
                         <button onClick={() => onEdit(patient)} className="font-medium text-indigo-600 hover:text-indigo-800">Sửa</button>
-                        <button onClick={() => onDelete(patient.id)} className="font-medium text-red-600 hover:text-red-800">Xóa</button>
+                        <button onClick={() => onDelete(patient)} className="font-medium text-red-600 hover:text-red-800">Xóa</button>
                       </div>
                   </div>
               ))}
@@ -408,7 +493,9 @@
           const [patients, setPatients] = useState([]);
           const [isFormModalOpen, setIsFormModalOpen] = useState(false);
           const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+          const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
           const [patientToEdit, setPatientToEdit] = useState(null);
+          const [patientToDeleteId, setPatientToDeleteId] = useState(null);
           const [syncStatus, setSyncStatus] = useState('idle'); // idle, loading, syncing, success, error
           const [errorMessage, setErrorMessage] = useState('');
           const [searchTerm, setSearchTerm] = useState('');
@@ -501,6 +588,10 @@
 
           }, [patients, searchTerm, sortBy]);
 
+          const patientToDelete = useMemo(() => 
+            patientToDeleteId ? patients.find(p => p.id === patientToDeleteId) : null,
+            [patientToDeleteId, patients]
+          );
 
           const handleAddPatientClick = () => {
               setPatientToEdit(null);
@@ -512,16 +603,25 @@
               setIsFormModalOpen(true);
           };
 
-          const handleDeletePatient = async (patientId) => {
-              if (window.confirm('Bạn có chắc chắn muốn xóa bệnh nhân này?')) {
-                  const originalPatients = [...patients];
-                  const newPatients = patients.filter(p => p.id !== patientId);
-                  setPatients(newPatients); // Cập nhật giao diện trước (optimistic update)
-                  try {
-                      await updateData(newPatients);
-                  } catch (error) {
-                      setPatients(originalPatients); // Hoàn tác nếu có lỗi
-                  }
+          const handleDeletePatientClick = (patient) => {
+              setPatientToDeleteId(patient.id);
+              setIsConfirmModalOpen(true);
+          };
+          
+          const confirmDeletePatient = async () => {
+              if (!patientToDeleteId) return;
+
+              const originalPatients = [...patients];
+              const newPatients = patients.filter(p => p.id !== patientToDeleteId);
+              setPatients(newPatients); // Cập nhật giao diện trước (optimistic update)
+              
+              setPatientToDeleteId(null);
+              setIsConfirmModalOpen(false);
+
+              try {
+                  await updateData(newPatients);
+              } catch (error) {
+                  setPatients(originalPatients); // Hoàn tác nếu có lỗi
               }
           };
           
@@ -648,7 +748,7 @@
                                   <h2 className="text-xl font-semibold text-gray-800">Bệnh nhân đang điều trị ({activePatients.length})</h2>
                               </div>
                               <DesktopHeader />
-                              <PatientTable patients={activePatients} onEdit={handleEditPatientClick} onDelete={handleDeletePatient} />
+                              <PatientTable patients={activePatients} onEdit={handleEditPatientClick} onDelete={handleDeletePatientClick} />
                               {syncStatus !== 'loading' && activePatients.length === 0 && (
                                 <div className="text-center py-10 text-gray-500">
                                   <p>{searchTerm ? `Không có bệnh nhân đang điều trị khớp với "${searchTerm}".` : 'Không có bệnh nhân nào đang điều trị.'}</p>
@@ -662,7 +762,7 @@
                                   <h2 className="text-xl font-semibold text-gray-800">Bệnh nhân đã ra viện ({dischargedPatients.length})</h2>
                               </div>
                               <DesktopHeader />
-                              <PatientTable patients={dischargedPatients} onEdit={handleEditPatientClick} onDelete={handleDeletePatient} />
+                              <PatientTable patients={dischargedPatients} onEdit={handleEditPatientClick} onDelete={handleDeletePatientClick} />
                                {syncStatus !== 'loading' && dischargedPatients.length === 0 && (
                                 <div className="text-center py-10 text-gray-500">
                                   <p>{searchTerm ? `Không có bệnh nhân đã ra viện khớp với "${searchTerm}".` : 'Chưa có bệnh nhân nào ra viện.'}</p>
@@ -690,6 +790,18 @@
                   <Modal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} title="Báo Cáo Hàng Ngày">
                       <ReportView patients={patients} onClose={() => setIsReportModalOpen(false)} />
                   </Modal>
+
+                  <ConfirmModal 
+                      isOpen={isConfirmModalOpen} 
+                      onClose={() => {
+                        setIsConfirmModalOpen(false);
+                        setPatientToDeleteId(null);
+                      }} 
+                      onConfirm={confirmDeletePatient}
+                      title="Xác nhận Xóa Bệnh Nhân"
+                  >
+                      <p>Bạn có chắc chắn muốn xóa bệnh nhân <strong>{patientToDelete?.name}</strong>? Hành động này không thể được hoàn tác.</p>
+                  </ConfirmModal>
               </div>
           );
       };
