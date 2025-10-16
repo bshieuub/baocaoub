@@ -90,7 +90,9 @@
 {
   "imports": {
     "react": "https://esm.sh/react@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client"
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"
   }
 }
 </script>
@@ -103,14 +105,27 @@
     <script type="text/babel" data-type="module">
       import React, { useState, useMemo, useEffect } from 'react';
       import ReactDOM from 'react-dom/client';
+      import { initializeApp } from 'firebase/app';
+      import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+
+      // --- CẤU HÌNH FIREBASE ---
+      const firebaseConfig = {
+        apiKey: "AIzaSyCSbyl8FkGDjoUCUuO2EtShH--uAHOL3hY",
+        authDomain: "noitruub.firebaseapp.com",
+        projectId: "noitruub",
+        storageBucket: "noitruub.firebasestorage.app",
+        messagingSenderId: "938135666001",
+        appId: "1:938135666001:web:2476aba951c1a2b24fa770",
+        measurementId: "G-WBZ3PTNKXZ"
+      };
+      
+      // Khởi tạo Firebase
+      const firebaseApp = initializeApp(firebaseConfig);
+      const firebaseAuth = getAuth(firebaseApp);
 
       // --- CẤU HÌNH JSONBIN.IO ---
-      // HƯỚNG DẪN:
-      // 1. Tạo một Access Key trên jsonbin.io với quyền "Bin Read" và "Bin Update" cho Bin của bạn.
-      // 2. Dán Access Key đó vào biến JSONBIN_API_KEY bên dưới.
-      // 3. KHÔNG BAO GIỜ sử dụng X-Master-Key ở đây.
-      const JSONBIN_API_KEY = '$2a$10$EtyuDuQssZbNvRx8yQRyg.Zw5Jze/x67cpb8WR9hJgQSmq/lHFGVe'; // <-- DÁN ACCESS KEY CỦA BẠN VÀO ĐÂY
-      const JSONBIN_BIN_ID = '68e7706b43b1c97be95fdf1b';       // <-- THAY THẾ BẰNG Bin ID CỦA BẠN
+      const JSONBIN_API_KEY = '$2a$10$EtyuDuQssZbNvRx8yQRyg.Zw5Jze/x67cpb8WR9hJgQSmq/lHFGVe';
+      const JSONBIN_BIN_ID = '68e7706b43b1c97be95fdf1b';
 
       // --- Start of inlined code from types.js ---
       const AdmissionStatus = {
@@ -199,8 +214,6 @@
           if (patientToEdit) {
             onSave({ ...patientData, id: patientToEdit.id });
           } else {
-            // For new patients, the initial diagnosis and note become the first history entry.
-            // We'll call the `newNote` field `notes` so the save handler can be consistent.
             onSave({ ...patientData, notes: patientData.newNote });
           }
         };
@@ -390,7 +403,7 @@
                   case 'loading': return { text: 'Đang tải...', icon: 'animate-spin h-4 w-4 mr-2', color: 'text-gray-600' };
                   case 'syncing': return { text: 'Đang đồng bộ...', icon: 'animate-spin h-4 w-4 mr-2', color: 'text-gray-600' };
                   case 'success': return { text: 'Đã đồng bộ', icon: 'h-4 w-4 mr-2', color: 'text-green-600' };
-                  case 'error': return { text: `Lỗi đồng bộ: ${error}`, icon: 'h-4 w-4 mr-2', color: 'text-red-600' };
+                  case 'error': return { text: `Lỗi: ${error}`, icon: 'h-4 w-4 mr-2', color: 'text-red-600' };
                   default: return null;
               }
           };
@@ -416,7 +429,7 @@
               </div>
           );
       };
-
+      
       // --- Start of inlined code from App.js ---
       const StatusBadge = ({ status }) => {
           const statusClasses = useMemo(() => {
@@ -489,7 +502,7 @@
         );
       };
 
-      const App = () => {
+      const App = ({ user, auth }) => {
           const [patients, setPatients] = useState([]);
           const [isFormModalOpen, setIsFormModalOpen] = useState(false);
           const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -502,19 +515,30 @@
           const [sortBy, setSortBy] = useState('roomNumber');
 
           const JSONBIN_API_URL = 'https://api.jsonbin.io/v3/b/';
+
+          const handleLogout = async () => {
+            try {
+              await signOut(auth);
+            } catch (error) {
+              console.error("Lỗi khi đăng xuất:", error);
+              alert("Không thể đăng xuất. Vui lòng thử lại.");
+            }
+          };
           
           const fetchData = async () => {
-              if (!JSONBIN_API_KEY || !JSONBIN_BIN_ID || JSONBIN_API_KEY === 'PASTE_YOUR_X_ACCESS_KEY_HERE') {
+              const isInvalidKey = !JSONBIN_API_KEY || JSONBIN_API_KEY.length < 50;
+              if (isInvalidKey || !JSONBIN_BIN_ID) {
                   setSyncStatus('error');
-                  setErrorMessage('Vui lòng cấu hình API Key và Bin ID trong code.');
+                  setErrorMessage('API Key hoặc Bin ID của Jsonbin.io chưa được cấu hình hoặc không hợp lệ. Vui lòng kiểm tra lại.');
                   return;
               }
+
               setSyncStatus('loading');
               setErrorMessage('');
               try {
                   const response = await fetch(`${JSONBIN_API_URL}${JSONBIN_BIN_ID}/latest`, {
                       method: 'GET',
-                      headers: { 'X-Access-Key': JSONBIN_API_KEY }, // SỬ DỤNG X-Access-Key
+                      headers: { 'X-Access-Key': JSONBIN_API_KEY },
                   });
                   if (!response.ok) throw new Error(`Lỗi ${response.status}: ${response.statusText}`);
                   const data = await response.json();
@@ -528,9 +552,14 @@
           };
 
           const updateData = async (newPatientsData) => {
-              if (!JSONBIN_API_KEY || !JSONBIN_BIN_ID || JSONBIN_API_KEY === 'PASTE_YOUR_X_ACCESS_KEY_HERE') {
-                  throw new Error('Chưa cấu hình API Key hoặc Bin ID.');
+              const isInvalidKey = !JSONBIN_API_KEY || JSONBIN_API_KEY.length < 50;
+              if (isInvalidKey || !JSONBIN_BIN_ID) {
+                  const errorMsg = 'API Key hoặc Bin ID của Jsonbin.io chưa được cấu hình hoặc không hợp lệ.';
+                  setSyncStatus('error');
+                  setErrorMessage(errorMsg);
+                  throw new Error(errorMsg);
               }
+
               setSyncStatus('syncing');
               setErrorMessage('');
               try {
@@ -538,7 +567,7 @@
                       method: 'PUT',
                       headers: {
                           'Content-Type': 'application/json',
-                          'X-Access-Key': JSONBIN_API_KEY, // SỬ DỤNG X-Access-Key
+                          'X-Access-Key': JSONBIN_API_KEY,
                       },
                       body: JSON.stringify({ patients: newPatientsData }),
                   });
@@ -548,7 +577,7 @@
                   console.error("Lỗi khi cập nhật dữ liệu lên Jsonbin:", error);
                   setSyncStatus('error');
                   setErrorMessage(error.message || 'Không thể đồng bộ dữ liệu.');
-                  throw error; // Re-throw để hàm gọi có thể xử lý
+                  throw error;
               }
           };
           
@@ -576,13 +605,28 @@
                     if (sortBy === 'name') {
                         return a.name.localeCompare(b.name, 'vi');
                     }
-                    // Default sort by roomNumber
                     return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true });
                 });
             
             const discharged = filtered
               .filter(p => p.status === AdmissionStatus.DISCHARGED)
-              .sort((a, b) => a.name.localeCompare(b.name, 'vi')); // Sort discharged by name
+              .sort((a, b) => {
+                  // Lấy ngày cập nhật cuối cùng của mỗi bệnh nhân
+                  const lastUpdateA = a.history?.[a.history.length - 1]?.date;
+                  const lastUpdateB = b.history?.[b.history.length - 1]?.date;
+
+                  // Sắp xếp theo ngày giảm dần (mới nhất trước)
+                  if (lastUpdateA && lastUpdateB) {
+                      // So sánh chuỗi ISO date trực tiếp là đủ
+                      if (lastUpdateB > lastUpdateA) return 1;
+                      if (lastUpdateB < lastUpdateA) return -1;
+                  }
+                  if (lastUpdateB) return 1; // Ưu tiên người có lịch sử
+                  if (lastUpdateA) return -1;
+
+                  // Sắp xếp theo tên nếu ngày trùng nhau hoặc không có
+                  return a.name.localeCompare(b.name, 'vi');
+              });
             
             return { activePatients: active, dischargedPatients: discharged };
 
@@ -613,7 +657,7 @@
 
               const originalPatients = [...patients];
               const newPatients = patients.filter(p => p.id !== patientToDeleteId);
-              setPatients(newPatients); // Cập nhật giao diện trước (optimistic update)
+              setPatients(newPatients);
               
               setPatientToDeleteId(null);
               setIsConfirmModalOpen(false);
@@ -621,7 +665,7 @@
               try {
                   await updateData(newPatients);
               } catch (error) {
-                  setPatients(originalPatients); // Hoàn tác nếu có lỗi
+                  setPatients(originalPatients);
               }
           };
           
@@ -629,36 +673,31 @@
               const originalPatients = [...patients];
               let newPatients;
 
-              // This is an existing patient being updated
               if (patientData.id) {
                   const newHistoryEntry = {
                       date: new Date().toISOString(),
                       diagnosis: patientData.diagnosis,
-                      notes: patientData.newNote, // Use newNote from form
+                      notes: patientData.newNote,
                   };
 
                   newPatients = patients.map(p => {
                       if (p.id === patientData.id) {
-                          // Create a new history array with the new entry
                           const updatedHistory = [...(p.history || []), newHistoryEntry];
-                          
-                          // Return the updated patient object
                           return { 
                               ...p, 
                               ...patientData, 
-                              diagnosis: patientData.diagnosis, // Update top-level diagnosis
-                              notes: patientData.newNote,       // Update top-level notes
+                              diagnosis: patientData.diagnosis,
+                              notes: patientData.newNote,
                               history: updatedHistory 
                           };
                       }
                       return p;
                   });
               } else {
-                  // This is a new patient
                   const newHistoryEntry = {
                       date: new Date().toISOString(),
                       diagnosis: patientData.diagnosis,
-                      notes: patientData.notes, // The form passes `newNote` as `notes`
+                      notes: patientData.notes,
                   };
                   const newPatient = {
                       ...patientData,
@@ -668,13 +707,13 @@
                   newPatients = [newPatient, ...patients];
               }
               
-              setPatients(newPatients); // Optimistic update
+              setPatients(newPatients);
               setIsFormModalOpen(false);
               
               try {
                   await updateData(newPatients);
               } catch(error) {
-                  setPatients(originalPatients); // Revert on error
+                  setPatients(originalPatients);
               }
           };
           
@@ -698,7 +737,17 @@
                             <h1 className="text-2xl font-bold text-indigo-600">Quản lý bệnh nhân nội trú Ung bướu</h1>
                             <SyncStatusIndicator status={syncStatus} error={errorMessage} />
                           </div>
-                          <div className="flex items-center space-x-2 sm:space-x-3">
+                          <div className="flex items-center space-x-2 sm:space-x-4">
+                              <div className="flex items-center space-x-3">
+                                  <span className="text-sm text-gray-600 hidden sm:inline" aria-label={`Logged in as ${user.email}`}>{user.email}</span>
+                                  <button onClick={handleLogout} className="flex items-center space-x-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md transition-colors" aria-label="Đăng xuất">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                                          <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
+                                      </svg>
+                                      <span>Đăng xuất</span>
+                                  </button>
+                              </div>
+                              <div className="h-8 border-l border-gray-200"></div>
                                <button onClick={() => setIsReportModalOpen(true)} className="bg-green-500 text-white px-4 py-2 rounded-md shadow hover:bg-green-600 transition-colors flex items-center space-x-2">
                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
                                   <span className="hidden sm:inline">Xem Báo Cáo</span>
@@ -743,7 +792,6 @@
                           </div>
 
                           <div className="overflow-x-auto">
-                              {/* Active Patients Section */}
                               <div className="px-6 pt-6 pb-2">
                                   <h2 className="text-xl font-semibold text-gray-800">Bệnh nhân đang điều trị ({activePatients.length})</h2>
                               </div>
@@ -757,7 +805,6 @@
                           </div>
 
                           <div className="mt-6 border-t overflow-x-auto">
-                              {/* Discharged Patients Section */}
                               <div className="px-6 pt-6 pb-2">
                                   <h2 className="text-xl font-semibold text-gray-800">Bệnh nhân đã ra viện ({dischargedPatients.length})</h2>
                               </div>
@@ -805,8 +852,106 @@
               </div>
           );
       };
+
+      const LoginPage = ({ auth }) => {
+        const [email, setEmail] = useState('');
+        const [password, setPassword] = useState('');
+        const [error, setError] = useState('');
+        const [isLoading, setIsLoading] = useState(false);
+
+        const handleLogin = async (e) => {
+          e.preventDefault();
+          if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("PASTE_YOUR")) {
+            setError('Ứng dụng chưa được cấu hình. Vui lòng làm theo hướng dẫn trong code.');
+            return;
+          }
+          setIsLoading(true);
+          setError('');
+          try {
+            await signInWithEmailAndPassword(auth, email, password);
+          } catch (err) {
+            setError('Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.');
+            console.error(err);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+
+        return (
+            <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
+              <div className="w-full max-w-sm bg-white rounded-xl shadow-lg p-8">
+                  <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">Hệ Thống Quản Lý Bệnh Nhân</h2>
+                  <p className="text-center text-gray-500 mb-8">Vui lòng đăng nhập để tiếp tục</p>
+                  <form onSubmit={handleLogin} className="space-y-6">
+                      <div>
+                          <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+                          <input
+                              id="email"
+                              name="email"
+                              type="email"
+                              autoComplete="email"
+                              required
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                      </div>
+                      <div>
+                          <label htmlFor="password"className="block text-sm font-medium text-gray-700">Mật khẩu</label>
+                          <input
+                              id="password"
+                              name="password"
+                              type="password"
+                              autoComplete="current-password"
+                              required
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                      </div>
+                      {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                      <div>
+                          <button
+                              type="submit"
+                              disabled={isLoading}
+                              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
+                          >
+                              {isLoading ? 'Đang đăng nhập...' : 'Đăng Nhập'}
+                          </button>
+                      </div>
+                  </form>
+              </div>
+            </div>
+        );
+      };
+
+      const AuthGate = ({ auth }) => {
+        const [user, setUser] = useState(null);
+        const [isLoading, setIsLoading] = useState(true);
+
+        useEffect(() => {
+          const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+            setIsLoading(false);
+          });
+          return () => unsubscribe();
+        }, [auth]);
+
+        if (isLoading) {
+          return (
+            <div className="flex justify-center items-center h-screen bg-gray-100">
+              <p className="text-lg text-gray-600">Đang kiểm tra xác thực...</p>
+            </div>
+          );
+        }
+
+        if (user) {
+          return <App user={user} auth={auth} />;
+        }
+
+        return <LoginPage auth={auth} />;
+      };
       
-      // --- Start of inlined code from index.js ---
       const rootElement = document.getElementById('root');
       if (!rootElement) {
         throw new Error("Could not find root element to mount to");
@@ -815,7 +960,7 @@
       const root = ReactDOM.createRoot(rootElement);
       root.render(
         <React.StrictMode>
-          <App />
+          <AuthGate auth={firebaseAuth} />
         </React.StrictMode>
       );
     </script>
