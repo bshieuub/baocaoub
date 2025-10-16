@@ -92,7 +92,8 @@
     "react": "https://esm.sh/react@18.2.0",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
     "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"
+    "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
   }
 }
 </script>
@@ -107,6 +108,7 @@
       import ReactDOM from 'react-dom/client';
       import { initializeApp } from 'firebase/app';
       import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+      import { getFirestore, collection, getDocs, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
       // --- CẤU HÌNH FIREBASE ---
       const firebaseConfig = {
@@ -122,10 +124,7 @@
       // Khởi tạo Firebase
       const firebaseApp = initializeApp(firebaseConfig);
       const firebaseAuth = getAuth(firebaseApp);
-
-      // --- CẤU HÌNH JSONBIN.IO ---
-      const JSONBIN_API_KEY = '$2a$10$EtyuDuQssZbNvRx8yQRyg.Zw5Jze/x67cpb8WR9hJgQSmq/lHFGVe';
-      const JSONBIN_BIN_ID = '68e7706b43b1c97be95fdf1b';
+      const db = getFirestore(firebaseApp);
 
       // --- Start of inlined code from types.js ---
       const AdmissionStatus = {
@@ -292,7 +291,7 @@
           .filter(
             p => p.status === AdmissionStatus.INPATIENT || p.status === AdmissionStatus.DISCHARGE_TODAY
           )
-          .sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }));
+          .sort((a, b) => (a.roomNumber || '').localeCompare(b.roomNumber || '', undefined, { numeric: true }));
 
         const handlePrint = () => {
           window.print();
@@ -514,8 +513,6 @@
           const [searchTerm, setSearchTerm] = useState('');
           const [sortBy, setSortBy] = useState('roomNumber');
 
-          const JSONBIN_API_URL = 'https://api.jsonbin.io/v3/b/';
-
           const handleLogout = async () => {
             try {
               await signOut(auth);
@@ -526,58 +523,18 @@
           };
           
           const fetchData = async () => {
-              const isInvalidKey = !JSONBIN_API_KEY || JSONBIN_API_KEY.length < 50;
-              if (isInvalidKey || !JSONBIN_BIN_ID) {
-                  setSyncStatus('error');
-                  setErrorMessage('API Key hoặc Bin ID của Jsonbin.io chưa được cấu hình hoặc không hợp lệ. Vui lòng kiểm tra lại.');
-                  return;
-              }
-
               setSyncStatus('loading');
               setErrorMessage('');
               try {
-                  const response = await fetch(`${JSONBIN_API_URL}${JSONBIN_BIN_ID}/latest`, {
-                      method: 'GET',
-                      headers: { 'X-Access-Key': JSONBIN_API_KEY },
-                  });
-                  if (!response.ok) throw new Error(`Lỗi ${response.status}: ${response.statusText}`);
-                  const data = await response.json();
-                  setPatients(data.record.patients || []);
+                  const patientsCollection = collection(db, 'patients');
+                  const patientSnapshot = await getDocs(patientsCollection);
+                  const patientsList = patientSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                  setPatients(patientsList);
                   setSyncStatus('success');
               } catch (error) {
-                  console.error("Lỗi khi tải dữ liệu từ Jsonbin:", error);
+                  console.error("Lỗi khi tải dữ liệu từ Firestore:", error);
                   setSyncStatus('error');
                   setErrorMessage(error.message || 'Không thể tải dữ liệu.');
-              }
-          };
-
-          const updateData = async (newPatientsData) => {
-              const isInvalidKey = !JSONBIN_API_KEY || JSONBIN_API_KEY.length < 50;
-              if (isInvalidKey || !JSONBIN_BIN_ID) {
-                  const errorMsg = 'API Key hoặc Bin ID của Jsonbin.io chưa được cấu hình hoặc không hợp lệ.';
-                  setSyncStatus('error');
-                  setErrorMessage(errorMsg);
-                  throw new Error(errorMsg);
-              }
-
-              setSyncStatus('syncing');
-              setErrorMessage('');
-              try {
-                  const response = await fetch(`${JSONBIN_API_URL}${JSONBIN_BIN_ID}`, {
-                      method: 'PUT',
-                      headers: {
-                          'Content-Type': 'application/json',
-                          'X-Access-Key': JSONBIN_API_KEY,
-                      },
-                      body: JSON.stringify({ patients: newPatientsData }),
-                  });
-                  if (!response.ok) throw new Error(`Lỗi ${response.status}: ${response.statusText}`);
-                  setSyncStatus('success');
-              } catch (error) {
-                  console.error("Lỗi khi cập nhật dữ liệu lên Jsonbin:", error);
-                  setSyncStatus('error');
-                  setErrorMessage(error.message || 'Không thể đồng bộ dữ liệu.');
-                  throw error;
               }
           };
           
@@ -595,37 +552,33 @@
           const { activePatients, dischargedPatients } = useMemo(() => {
             const filtered = patients
                 .filter(p =>
-                    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    p.patientCode.toLowerCase().includes(searchTerm.toLowerCase())
+                    (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (p.patientCode || '').toLowerCase().includes(searchTerm.toLowerCase())
                 );
             
             const active = filtered
               .filter(p => p.status !== AdmissionStatus.DISCHARGED)
               .sort((a, b) => {
                     if (sortBy === 'name') {
-                        return a.name.localeCompare(b.name, 'vi');
+                        return (a.name || '').localeCompare(b.name || '', 'vi');
                     }
-                    return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true });
+                    return (a.roomNumber || '').localeCompare(b.roomNumber || '', undefined, { numeric: true });
                 });
             
             const discharged = filtered
               .filter(p => p.status === AdmissionStatus.DISCHARGED)
               .sort((a, b) => {
-                  // Lấy ngày cập nhật cuối cùng của mỗi bệnh nhân
                   const lastUpdateA = a.history?.[a.history.length - 1]?.date;
                   const lastUpdateB = b.history?.[b.history.length - 1]?.date;
 
-                  // Sắp xếp theo ngày giảm dần (mới nhất trước)
                   if (lastUpdateA && lastUpdateB) {
-                      // So sánh chuỗi ISO date trực tiếp là đủ
                       if (lastUpdateB > lastUpdateA) return 1;
                       if (lastUpdateB < lastUpdateA) return -1;
                   }
-                  if (lastUpdateB) return 1; // Ưu tiên người có lịch sử
+                  if (lastUpdateB) return 1;
                   if (lastUpdateA) return -1;
 
-                  // Sắp xếp theo tên nếu ngày trùng nhau hoặc không có
-                  return a.name.localeCompare(b.name, 'vi');
+                  return (a.name || '').localeCompare(b.name || '', 'vi');
               });
             
             return { activePatients: active, dischargedPatients: discharged };
@@ -659,63 +612,81 @@
               const newPatients = patients.filter(p => p.id !== patientToDeleteId);
               setPatients(newPatients);
               
-              setPatientToDeleteId(null);
               setIsConfirmModalOpen(false);
+              setSyncStatus('syncing');
 
               try {
-                  await updateData(newPatients);
+                  await deleteDoc(doc(db, 'patients', patientToDeleteId));
+                  setSyncStatus('success');
               } catch (error) {
                   setPatients(originalPatients);
+                  setSyncStatus('error');
+                  setErrorMessage(`Lỗi xóa: ${error.message}`);
+              } finally {
+                setPatientToDeleteId(null);
               }
           };
           
-          const handleSavePatient = async (patientData) => {
-              const originalPatients = [...patients];
-              let newPatients;
+           const handleSavePatient = async (patientData) => {
+                const originalPatients = [...patients];
+                setSyncStatus('syncing');
+                setIsFormModalOpen(false);
 
-              if (patientData.id) {
-                  const newHistoryEntry = {
-                      date: new Date().toISOString(),
-                      diagnosis: patientData.diagnosis,
-                      notes: patientData.newNote,
-                  };
+                if (patientData.id) { // UPDATE
+                    const newHistoryEntry = {
+                        date: new Date().toISOString(),
+                        diagnosis: patientData.diagnosis,
+                        notes: patientData.newNote || '',
+                    };
 
-                  newPatients = patients.map(p => {
-                      if (p.id === patientData.id) {
-                          const updatedHistory = [...(p.history || []), newHistoryEntry];
-                          return { 
-                              ...p, 
-                              ...patientData, 
-                              diagnosis: patientData.diagnosis,
-                              notes: patientData.newNote,
-                              history: updatedHistory 
-                          };
-                      }
-                      return p;
-                  });
-              } else {
-                  const newHistoryEntry = {
-                      date: new Date().toISOString(),
-                      diagnosis: patientData.diagnosis,
-                      notes: patientData.notes,
-                  };
-                  const newPatient = {
-                      ...patientData,
-                      id: crypto.randomUUID(),
-                      history: [newHistoryEntry],
-                  };
-                  newPatients = [newPatient, ...patients];
-              }
-              
-              setPatients(newPatients);
-              setIsFormModalOpen(false);
-              
-              try {
-                  await updateData(newPatients);
-              } catch(error) {
-                  setPatients(originalPatients);
-              }
-          };
+                    const newPatients = patients.map(p => {
+                        if (p.id === patientData.id) {
+                            const updatedHistory = [...(p.history || []), newHistoryEntry];
+                            return { ...p, ...patientData, notes: patientData.newNote, history: updatedHistory };
+                        }
+                        return p;
+                    });
+                    
+                    setPatients(newPatients);
+
+                    try {
+                        const patientDocRef = doc(db, 'patients', patientData.id);
+                        const updatedPatientData = newPatients.find(p => p.id === patientData.id);
+                        const { id, newNote, ...dataToSave } = updatedPatientData;
+                        await updateDoc(patientDocRef, dataToSave);
+                        setSyncStatus('success');
+                    } catch(error) {
+                        setPatients(originalPatients);
+                        setSyncStatus('error');
+                        setErrorMessage(`Lỗi cập nhật: ${error.message}`);
+                    }
+                } else { // ADD
+                    const newHistoryEntry = {
+                        date: new Date().toISOString(),
+                        diagnosis: patientData.diagnosis,
+                        notes: patientData.notes || '',
+                    };
+                    const tempId = crypto.randomUUID();
+                    const newPatient = {
+                        ...patientData,
+                        id: tempId,
+                        history: [newHistoryEntry],
+                    };
+                    
+                    setPatients([newPatient, ...patients]);
+                    
+                    try {
+                        const { id, ...dataToSave } = newPatient;
+                        const docRef = await addDoc(collection(db, "patients"), dataToSave);
+                        setPatients(current => current.map(p => p.id === tempId ? { ...p, id: docRef.id } : p));
+                        setSyncStatus('success');
+                    } catch(error) {
+                        setPatients(originalPatients);
+                        setSyncStatus('error');
+                        setErrorMessage(`Lỗi thêm mới: ${error.message}`);
+                    }
+                }
+            };
           
           const DesktopHeader = () => (
             <div className="hidden md:grid md:grid-cols-[50px_1fr_120px_100px_1fr_120px_120px] gap-x-6 px-6 py-3 text-xs text-gray-700 uppercase bg-gray-50 font-medium items-center">
@@ -744,7 +715,7 @@
                                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
                                           <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
                                       </svg>
-                                      <span>Đăng xuất</span>
+                                      <span className="hidden sm:inline">Đăng xuất</span>
                                   </button>
                               </div>
                               <div className="h-8 border-l border-gray-200"></div>
