@@ -3,7 +3,7 @@ import { Patient, PatientFormData, AdmissionStatus } from '../types/patient';
 import { validatePatientForm, sanitizeInput, ValidationError } from '../utils/validation';
 
 interface PatientFormProps {
-  onSave: (patientData: PatientFormData & { id?: string }) => void;
+  onSave: (patientData: any) => void;
   onClose: () => void;
   patientToEdit?: Patient | null;
 }

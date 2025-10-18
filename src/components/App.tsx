@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { signOut } from 'firebase/auth';
-import { auth } from './config/firebase';
-import { usePatients } from './hooks/usePatients';
-import { Patient, AdmissionStatus } from './types/patient';
-import { Modal } from './components/Modal';
-import { PatientForm } from './components/PatientForm';
-import { PatientTable, DesktopHeader } from './components/PatientTable';
-import { ReportView } from './components/ReportView';
-import { ConfirmModal } from './components/ConfirmModal';
-import { SyncStatusIndicator } from './components/SyncStatusIndicator';
+import { auth } from '../config/firebase';
+import { usePatients } from '../hooks/usePatients';
+import { Patient, AdmissionStatus } from '../types/patient';
+import { Modal } from './Modal';
+import { PatientForm } from './PatientForm';
+import { PatientTable, DesktopHeader } from './PatientTable';
+import { ReportView } from './ReportView';
+import { ConfirmModal } from './ConfirmModal';
+import { SyncStatusIndicator } from './SyncStatusIndicator';
 
 interface AppProps {
   user: any;
@@ -18,7 +18,6 @@ export const App: React.FC<AppProps> = ({ user }) => {
   const {
     patients,
     syncStatus,
-    error,
     addPatient,
     updatePatient,
     deletePatient,
@@ -108,7 +107,7 @@ export const App: React.FC<AppProps> = ({ user }) => {
     }
   };
   
-  const handleSavePatient = async (patientData: Patient & { id?: string }) => {
+  const handleSavePatient = async (patientData: any) => {
     try {
       if (patientData.id) {
         // UPDATE
@@ -129,7 +128,7 @@ export const App: React.FC<AppProps> = ({ user }) => {
         const newHistoryEntry = {
           date: new Date().toISOString(),
           diagnosis: patientData.diagnosis,
-          notes: patientData.notes || '',
+          notes: patientData.notes || patientData.newNote || '',
         };
 
         const newPatient = {

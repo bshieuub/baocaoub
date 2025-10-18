@@ -4,12 +4,7 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
-  doc, 
-  query, 
-  orderBy,
-  limit,
-  startAfter,
-  DocumentSnapshot
+  doc
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Patient, PatientHistoryEntry } from '../types/patient';
