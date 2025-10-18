@@ -9,12 +9,17 @@ export const AuthGate: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    console.log('AuthGate: Starting auth state listener');
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      console.log('AuthGate: Auth state changed', currentUser ? 'User logged in' : 'User logged out');
       setUser(currentUser);
       setIsLoading(false);
     });
     
-    return () => unsubscribe();
+    return () => {
+      console.log('AuthGate: Cleaning up auth listener');
+      unsubscribe();
+    };
   }, []);
 
   if (isLoading) {
