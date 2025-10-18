@@ -1,0 +1,111 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Custom styles for print functionality */
+@media print {
+  /* Define page layout for printing */
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+
+  body {
+    background-color: #fff !important; /* Ensure white background */
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Hide all elements specifically marked as non-printable.
+     This includes the main app header, footer, buttons, etc. */
+  .no-print {
+    display: none !important;
+  }
+
+  /* The following rules reset the modal's styling so its content
+     can flow like a normal document instead of being a fixed-size overlay. */
+
+  /* 1. Reset the modal's full-screen overlay */
+  .fixed.inset-0 {
+    position: static !important;
+    background: none !important;
+    padding: 0 !important;
+  }
+
+  /* 2. Reset the modal's main dialog box (the white container) */
+  .fixed.inset-0 > div {
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    display: block !important; /* Crucial: This disables flexbox constraints */
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 3. Reset the modal's content area to allow it to expand */
+  .modal-content-area {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 0 !important;
+  }
+
+  /* 4. Let the print area flow naturally within the document */
+  #print-area {
+    padding: 0; /* Page margins are handled by @page */
+    margin: 0;
+    font-size: 11pt; /* Use points for better print scaling */
+  }
+  
+  /* Ensure patient blocks do not get split across pages */
+  #print-area .break-inside-avoid {
+    page-break-inside: avoid;
+  }
+
+  /* Specific font sizes for report elements */
+  #print-area h3 {
+    font-size: 16pt;
+  }
+  #print-area h4 {
+    font-size: 13pt;
+  }
+  #print-area p, #print-area span, #print-area div {
+    /* !important is needed to override inline tailwind styles */
+    font-size: 11pt !important;
+  }
+}
+
+/* Custom loading animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
