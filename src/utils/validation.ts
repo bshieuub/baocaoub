@@ -1,4 +1,4 @@
-import { PatientFormData } from '../types/patient';
+import { PatientFormData, TreatmentDirection } from '../types/patient';
 
 export interface ValidationError {
   field: string;
@@ -62,6 +62,16 @@ export const validatePatientForm = (data: PatientFormData): ValidationError[] =>
       field: 'diagnosis',
       message: 'Chẩn đoán phải có ít nhất 3 ký tự'
     });
+  }
+
+  // Surgery team validation (only if treatment is surgery)
+  if (data.treatmentDirection === TreatmentDirection.SURGERY) {
+    if (!data.mainSurgeon || data.mainSurgeon.trim().length < 2) {
+      errors.push({
+        field: 'mainSurgeon',
+        message: 'Phẫu thuật viên chính phải có ít nhất 2 ký tự'
+      });
+    }
   }
 
   return errors;
