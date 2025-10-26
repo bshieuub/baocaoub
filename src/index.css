@@ -7,32 +7,30 @@
   /* Define page layout for printing */
   @page {
     size: A4;
-    margin: 1.5cm;
+    margin: 1cm 1.5cm; /* Giảm margin để có nhiều không gian hơn */
   }
 
   body {
-    background-color: #fff !important; /* Ensure white background */
+    background-color: #fff !important;
     margin: 0;
     padding: 0;
+    font-size: 10pt; /* Giảm font size chung */
+    line-height: 1.3; /* Giảm line-height */
   }
 
-  /* Hide all elements specifically marked as non-printable.
-     This includes the main app header, footer, buttons, etc. */
+  /* Hide all elements specifically marked as non-printable */
   .no-print {
     display: none !important;
   }
 
-  /* The following rules reset the modal's styling so its content
-     can flow like a normal document instead of being a fixed-size overlay. */
-
-  /* 1. Reset the modal's full-screen overlay */
+  /* Reset the modal's full-screen overlay */
   .fixed.inset-0 {
     position: static !important;
     background: none !important;
     padding: 0 !important;
   }
 
-  /* 2. Reset the modal's main dialog box (the white container) */
+  /* Reset the modal's main dialog box */
   .fixed.inset-0 > div {
     width: auto !important;
     max-width: none !important;
@@ -40,12 +38,12 @@
     max-height: none !important;
     box-shadow: none !important;
     border: none !important;
-    display: block !important; /* Crucial: This disables flexbox constraints */
+    display: block !important;
     margin: 0 !important;
     padding: 0 !important;
   }
 
-  /* 3. Reset the modal's content area to allow it to expand */
+  /* Reset the modal's content area */
   .modal-content-area {
     overflow: visible !important;
     height: auto !important;
@@ -53,28 +51,119 @@
     padding: 0 !important;
   }
 
-  /* 4. Let the print area flow naturally within the document */
+  /* Print area styling */
   #print-area {
-    padding: 0; /* Page margins are handled by @page */
+    padding: 0;
     margin: 0;
-    font-size: 11pt; /* Use points for better print scaling */
+    font-size: 10pt;
   }
   
-  /* Ensure patient blocks do not get split across pages */
-  #print-area .break-inside-avoid {
-    page-break-inside: avoid;
+  /* Title - giảm kích thước */
+  #print-area h3 {
+    font-size: 14pt !important;
+    margin-bottom: 0.3cm !important;
+    line-height: 1.2 !important;
   }
 
-  /* Specific font sizes for report elements */
-  #print-area h3 {
-    font-size: 16pt;
+  /* Subtitle - ngày tháng */
+  #print-area > p {
+    font-size: 10pt !important;
+    margin-bottom: 0.4cm !important;
   }
+
+  /* Patient card title */
   #print-area h4 {
-    font-size: 13pt;
-  }
-  #print-area p, #print-area span, #print-area div {
-    /* !important is needed to override inline tailwind styles */
     font-size: 11pt !important;
+    margin-bottom: 0.2cm !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Patient cards container */
+  #print-area .space-y-4 {
+    margin-top: 0 !important;
+  }
+
+  /* Individual patient card */
+  #print-area .break-inside-avoid {
+    page-break-inside: avoid;
+    margin-bottom: 0.4cm !important;
+    padding: 0.3cm !important;
+    border: 1px solid #ddd !important;
+    border-radius: 0.2cm;
+  }
+
+  /* All text in print area */
+  #print-area p,
+  #print-area span,
+  #print-area div {
+    font-size: 9pt !important;
+    line-height: 1.3 !important;
+  }
+
+  /* Grid layout for patient info */
+  #print-area .grid {
+    gap: 0.2cm !important;
+  }
+
+  /* Badges - giảm padding */
+  #print-area .rounded-full {
+    padding: 0.1cm 0.3cm !important;
+    font-size: 8pt !important;
+  }
+
+  /* Surgery team box - compact hơn */
+  #print-area .bg-purple-50 {
+    padding: 0.2cm !important;
+    margin-bottom: 0.2cm !important;
+  }
+
+  /* MSBN info line */
+  #print-area .text-gray-500.mb-2 {
+    margin-bottom: 0.2cm !important;
+  }
+
+  /* Footer email */
+  #print-area .mt-8 {
+    margin-top: 0.5cm !important;
+    font-size: 9pt !important;
+  }
+
+  /* Flex containers - giảm gap */
+  #print-area .flex {
+    gap: 0.2cm !important;
+  }
+
+  /* Compact spacing for lists */
+  #print-area .ml-2 {
+    margin-left: 0.3cm !important;
+  }
+
+  /* Remove excessive margins */
+  #print-area * {
+    margin-top: 0;
+  }
+
+  #print-area .mb-2 {
+    margin-bottom: 0.15cm !important;
+  }
+
+  #print-area .mb-4 {
+    margin-bottom: 0.3cm !important;
+  }
+
+  #print-area .mb-6 {
+    margin-bottom: 0.4cm !important;
+  }
+
+  #print-area .mt-2 {
+    margin-top: 0.15cm !important;
+  }
+
+  /* Ensure colors print correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
   }
 }
 
