@@ -22,17 +22,17 @@ export const ReportView: React.FC<ReportViewProps> = ({ patients, onClose }) => 
   return (
     <div className="space-y-6">
       <div id="print-area">
-        <h3 className="text-2xl font-bold text-center text-gray-800 mb-2">
+        <h3 className="text-2xl font-bold text-center text-gray-800 mb-2 print:text-xl print:mb-1">
           Báo cáo bệnh nhân nội trú Ung bướu
         </h3>
-        <p className="text-center text-gray-600 mb-6">Ngày: {today}</p>
+        <p className="text-center text-gray-600 mb-6 print:text-sm print:mb-2">Ngày: {today}</p>
         
-        <div className="space-y-4">
+        <div className="space-y-4 print:space-y-2">
           {patientsToReport.length > 0 ? (
             patientsToReport.map((patient, index) => (
               <div 
                 key={patient.id} 
-                className="p-4 border border-gray-200 rounded-lg bg-gray-50 break-inside-avoid"
+                className="p-4 border border-gray-200 rounded-lg bg-gray-50 break-inside-avoid print:p-2 print:mb-2"
               >
                 <div className="flex justify-between items-start mb-2">
                   <h4 className="text-lg font-semibold text-indigo-700">
