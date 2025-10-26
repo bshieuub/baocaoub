@@ -1,5 +1,5 @@
 import React from 'react';
-import { Patient, AdmissionStatus } from '../types/patient';
+import { Patient, AdmissionStatus, TreatmentDirection } from '../types/patient';
 
 interface PatientTableProps {
   patients: Patient[];
@@ -28,13 +28,35 @@ const StatusBadge: React.FC<{ status: AdmissionStatus }> = ({ status }) => {
   );
 };
 
+const TreatmentBadge: React.FC<{ treatment: TreatmentDirection }> = ({ treatment }) => {
+  const getTreatmentClasses = (treatment: TreatmentDirection) => {
+    switch (treatment) {
+      case TreatmentDirection.SURGERY:
+        return 'bg-purple-100 text-purple-800';
+      case TreatmentDirection.CHEMOTHERAPY:
+        return 'bg-orange-100 text-orange-800';
+      case TreatmentDirection.PALLIATIVE_CARE:
+        return 'bg-teal-100 text-teal-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTreatmentClasses(treatment)}`}>
+      {treatment}
+    </span>
+  );
+};
+
 const DesktopHeader: React.FC = () => (
-  <div className="hidden md:grid md:grid-cols-[40px_minmax(180px,1.5fr)_110px_80px_minmax(200px,2.5fr)_120px_100px] gap-x-6 px-6 py-3 text-xs text-gray-700 uppercase bg-gray-50 font-medium items-center border-b">
+  <div className="hidden md:grid md:grid-cols-[40px_minmax(180px,1.5fr)_110px_80px_minmax(200px,2fr)_130px_120px_100px] gap-x-4 px-6 py-3 text-xs text-gray-700 uppercase bg-gray-50 font-medium items-center border-b">
     <span className="text-center">STT</span>
     <span>Họ Tên</span>
     <span>MSBN</span>
     <span className="text-center">Phòng</span>
     <span>Chẩn Đoán</span>
+    <span className="text-center">Hướng ĐT</span>
     <span className="text-center">Tình Trạng</span>
     <span className="text-right">Hành Động</span>
   </div>
@@ -50,7 +72,7 @@ export const PatientTable: React.FC<PatientTableProps> = ({
       {patients.map((patient, index) => (
         <div 
           key={patient.id} 
-          className="bg-white p-4 mb-4 rounded-lg shadow md:shadow-none md:rounded-none md:mb-0 md:grid md:grid-cols-[40px_minmax(180px,1.5fr)_110px_80px_minmax(200px,2.5fr)_120px_100px] md:gap-x-6 md:px-6 md:py-4 md:border-b hover:bg-gray-50 items-center"
+          className="bg-white p-4 mb-4 rounded-lg shadow md:shadow-none md:rounded-none md:mb-0 md:grid md:grid-cols-[40px_minmax(180px,1.5fr)_110px_80px_minmax(200px,2fr)_130px_120px_100px] md:gap-x-4 md:px-6 md:py-4 md:border-b hover:bg-gray-50 items-center"
         >
           {/* STT (Desktop) */}
           <div className="hidden md:block text-center text-sm text-gray-500">
@@ -91,8 +113,21 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                 <p className="font-medium">{patient.roomNumber}</p>
               </div>
               <div className="col-span-2">
+                <p className="text-gray-500">Hướng điều trị</p>
+                <div className="font-medium mt-1">
+                  <TreatmentBadge treatment={patient.treatmentDirection} />
+                </div>
+                {patient.treatmentDirection === TreatmentDirection.SURGERY && patient.surgeryTeam && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    Ekip: {patient.surgeryTeam.mainSurgeon}
+                    {patient.surgeryTeam.assistant1 && `, ${patient.surgeryTeam.assistant1}`}
+                    {patient.surgeryTeam.assistant2 && `, ${patient.surgeryTeam.assistant2}`}
+                  </p>
+                )}
+              </div>
+              <div className="col-span-2">
                 <p className="text-gray-500">Tình trạng</p>
-                <div className="font-medium">
+                <div className="font-medium mt-1">
                   <StatusBadge status={patient.status} />
                 </div>
               </div>
@@ -115,6 +150,14 @@ export const PatientTable: React.FC<PatientTableProps> = ({
           </div>
           <div className="hidden md:block text-sm text-gray-700 break-words">
             {patient.diagnosis}
+          </div>
+          <div className="hidden md:block text-center">
+            <TreatmentBadge treatment={patient.treatmentDirection} />
+            {patient.treatmentDirection === TreatmentDirection.SURGERY && patient.surgeryTeam && (
+              <p className="text-xs text-gray-600 mt-1">
+                {patient.surgeryTeam.mainSurgeon}
+              </p>
+            )}
           </div>
           <div className="hidden md:block text-center">
             <StatusBadge status={patient.status} />
