@@ -12,37 +12,34 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-WBZ3PTNKXZ',
 };
 
-// Validate Firebase config in development only
-if (import.meta.env.DEV) {
-  const requiredEnvVars = [
-    'VITE_FIREBASE_API_KEY',
-    'VITE_FIREBASE_AUTH_DOMAIN',
-    'VITE_FIREBASE_PROJECT_ID',
-    'VITE_FIREBASE_STORAGE_BUCKET',
-    'VITE_FIREBASE_MESSAGING_SENDER_ID',
-    'VITE_FIREBASE_APP_ID',
-  ];
+// Validate required environment variables
+const requiredEnvVars = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID',
+];
 
-  const missingVars = requiredEnvVars.filter(
-    (varName) => !import.meta.env[varName]
+const missingVars = requiredEnvVars.filter(
+  (varName) => !(import.meta.env as any)[varName]
+);
+
+if (missingVars.length > 0) {
+  console.error(
+    `Missing required environment variables: ${missingVars.join(', ')}`
   );
-
-  if (missingVars.length > 0) {
-    console.warn(
-      `⚠️ Missing environment variables: ${missingVars.join(', ')}\nUsing fallback values from config.`
+  // Don't throw error in production, just log it
+  if (import.meta.env.DEV) {
+    throw new Error(
+      `Missing required environment variables: ${missingVars.join(', ')}`
     );
   }
 }
 
 // Initialize Firebase
-console.log('🔥 Initializing Firebase with project:', firebaseConfig.projectId);
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-
-// Expose db to window for migration script
-if (typeof window !== 'undefined') {
-  (window as any).__FIREBASE_DB__ = db;
-}
-
 export default app;

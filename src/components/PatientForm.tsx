@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Patient, PatientFormData, AdmissionStatus, TreatmentDirection } from '../types/patient';
+import { Patient, PatientFormData, AdmissionStatus } from '../types/patient';
 import { validatePatientForm, sanitizeInput, ValidationError } from '../utils/validation';
 
 interface PatientFormProps {
@@ -21,10 +21,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     reason: '',
     diagnosis: '',
     status: AdmissionStatus.INPATIENT,
-    treatmentDirection: TreatmentDirection.CHEMOTHERAPY,
-    mainSurgeon: '',
-    assistant1: '',
-    assistant2: '',
     newNote: '',
   });
 
@@ -41,10 +37,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         reason: patientToEdit.reason,
         diagnosis: patientToEdit.diagnosis,
         status: patientToEdit.status,
-        treatmentDirection: patientToEdit.treatmentDirection || TreatmentDirection.CHEMOTHERAPY,
-        mainSurgeon: patientToEdit.surgeryTeam?.mainSurgeon || '',
-        assistant1: patientToEdit.surgeryTeam?.assistant1 || '',
-        assistant2: patientToEdit.surgeryTeam?.assistant2 || '',
         newNote: '',
       });
     } else {
@@ -56,10 +48,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         reason: '',
         diagnosis: '',
         status: AdmissionStatus.INPATIENT,
-        treatmentDirection: TreatmentDirection.CHEMOTHERAPY,
-        mainSurgeon: '',
-        assistant1: '',
-        assistant2: '',
         newNote: '',
       });
     }
@@ -72,6 +60,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     
     setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
     
+    // Clear error for this field when user starts typing
     if (errors.length > 0) {
       setErrors(prev => prev.filter(error => error.field !== name));
     }
@@ -88,21 +77,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
     setIsSubmitting(true);
     try {
-      const patientData: any = {
+      const patientData = {
         ...formData,
         birthYear: parseInt(formData.birthYear, 10),
       };
-
-      // Only include surgery team if treatment direction is surgery
-      if (formData.treatmentDirection === TreatmentDirection.SURGERY) {
-        patientData.surgeryTeam = {
-          mainSurgeon: formData.mainSurgeon,
-          assistant1: formData.assistant1,
-          assistant2: formData.assistant2,
-        };
-      } else {
-        patientData.surgeryTeam = undefined;
-      }
       
       if (patientToEdit) {
         onSave({ ...patientData, id: patientToEdit.id });
@@ -117,7 +95,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({
   };
 
   const sortedHistory = patientToEdit?.history?.slice().reverse() ?? [];
-  const isSurgery = formData.treatmentDirection === TreatmentDirection.SURGERY;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -226,82 +203,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
             ))}
           </select>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Hướng điều trị *
-          </label>
-          <select
-            name="treatmentDirection"
-            value={formData.treatmentDirection}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            {Object.values(TreatmentDirection).map(direction => (
-              <option key={direction} value={direction}>{direction}</option>
-            ))}
-          </select>
-        </div>
       </div>
-
-      {isSurgery && (
-        <div className="border-t pt-4 mt-4">
-          <h3 className="text-lg font-medium text-gray-800 mb-3">
-            Thông tin phẫu thuật
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Phẫu thuật viên chính *
-              </label>
-              <input
-                type="text"
-                name="mainSurgeon"
-                value={formData.mainSurgeon}
-                onChange={handleChange}
-                className={`mt-1 block w-full border rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                  errors.find(e => e.field === 'mainSurgeon') ? 'border-red-500' : 'border-gray-300'
-                }`}
-                required={isSurgery}
-                maxLength={100}
-              />
-              {errors.find(e => e.field === 'mainSurgeon') && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.find(e => e.field === 'mainSurgeon')?.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Phẫu thuật viên phụ 1
-              </label>
-              <input
-                type="text"
-                name="assistant1"
-                value={formData.assistant1}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                maxLength={100}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Phẫu thuật viên phụ 2
-              </label>
-              <input
-                type="text"
-                name="assistant2"
-                value={formData.assistant2}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                maxLength={100}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700">
@@ -373,18 +275,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({
                 <p className="text-xs font-semibold text-gray-500 mb-1">
                   {new Date(entry.date).toLocaleString('vi-VN')}
                 </p>
-                {entry.treatmentDirection && (
-                  <p className="text-sm mb-1">
-                    <span className="font-semibold">Hướng điều trị:</span> {entry.treatmentDirection}
-                  </p>
-                )}
-                {entry.surgeryTeam && (
-                  <p className="text-sm mb-1">
-                    <span className="font-semibold">Ekip PT:</span> {entry.surgeryTeam.mainSurgeon}
-                    {entry.surgeryTeam.assistant1 && `, ${entry.surgeryTeam.assistant1}`}
-                    {entry.surgeryTeam.assistant2 && `, ${entry.surgeryTeam.assistant2}`}
-                  </p>
-                )}
                 <p className="text-sm">
                   <span className="font-semibold">Chẩn đoán:</span> {entry.diagnosis}
                 </p>

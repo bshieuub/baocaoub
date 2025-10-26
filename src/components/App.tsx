@@ -107,47 +107,43 @@ export const App: React.FC<AppProps> = ({ user }) => {
     }
   };
   
-const handleSavePatient = async (patientData: any) => {
-  try {
-    if (patientData.id) {
-      // UPDATE
-      const newHistoryEntry = {
-        date: new Date().toISOString(),
-        diagnosis: patientData.diagnosis,
-        notes: patientData.newNote || '',
-        treatmentDirection: patientData.treatmentDirection,
-        surgeryTeam: patientData.surgeryTeam,
-      };
+  const handleSavePatient = async (patientData: any) => {
+    try {
+      if (patientData.id) {
+        // UPDATE
+        const newHistoryEntry = {
+          date: new Date().toISOString(),
+          diagnosis: patientData.diagnosis,
+          notes: patientData.newNote || '',
+        };
 
-      const updatedPatient = {
-        ...patientData,
-        history: [...(patientToEdit?.history || []), newHistoryEntry],
-      };
+        const updatedPatient = {
+          ...patientData,
+          history: [...(patientToEdit?.history || []), newHistoryEntry],
+        };
 
-      await updatePatient(patientData.id, updatedPatient);
-    } else {
-      // ADD
-      const newHistoryEntry = {
-        date: new Date().toISOString(),
-        diagnosis: patientData.diagnosis,
-        notes: patientData.notes || patientData.newNote || '',
-        treatmentDirection: patientData.treatmentDirection,
-        surgeryTeam: patientData.surgeryTeam,
-      };
+        await updatePatient(patientData.id, updatedPatient);
+      } else {
+        // ADD
+        const newHistoryEntry = {
+          date: new Date().toISOString(),
+          diagnosis: patientData.diagnosis,
+          notes: patientData.notes || patientData.newNote || '',
+        };
 
-      const newPatient = {
-        ...patientData,
-        history: [newHistoryEntry],
-      };
+        const newPatient = {
+          ...patientData,
+          history: [newHistoryEntry],
+        };
 
-      await addPatient(newPatient);
+        await addPatient(newPatient);
+      }
+      
+      setIsFormModalOpen(false);
+    } catch (error) {
+      console.error('Error saving patient:', error);
     }
-    
-    setIsFormModalOpen(false);
-  } catch (error) {
-    console.error('Error saving patient:', error);
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800 flex flex-col">

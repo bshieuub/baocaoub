@@ -4,24 +4,10 @@ export enum AdmissionStatus {
   DISCHARGE_TODAY = 'Dự kiến ra viện',
 }
 
-export enum TreatmentDirection {
-  SURGERY = 'Phẫu thuật',
-  CHEMOTHERAPY = 'Hoá trị',
-  PALLIATIVE_CARE = 'Chăm sóc giảm nhẹ',
-}
-
-export interface SurgeryTeam {
-  mainSurgeon: string;
-  assistant1: string;
-  assistant2: string;
-}
-
 export interface PatientHistoryEntry {
   date: string;
   diagnosis: string;
   notes: string;
-  treatmentDirection?: TreatmentDirection;
-  surgeryTeam?: SurgeryTeam;
 }
 
 export interface Patient {
@@ -34,8 +20,6 @@ export interface Patient {
   diagnosis: string;
   status: AdmissionStatus;
   notes: string;
-  treatmentDirection: TreatmentDirection;
-  surgeryTeam?: SurgeryTeam;
   history?: PatientHistoryEntry[];
   createdAt?: string;
   updatedAt?: string;
@@ -49,10 +33,6 @@ export interface PatientFormData {
   reason: string;
   diagnosis: string;
   status: AdmissionStatus;
-  treatmentDirection: TreatmentDirection;
-  mainSurgeon: string;
-  assistant1: string;
-  assistant2: string;
   newNote: string;
 }
 
