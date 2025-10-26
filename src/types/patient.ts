@@ -59,9 +59,4 @@ export interface PatientFormData {
 export interface SyncStatus {
   status: 'idle' | 'loading' | 'syncing' | 'success' | 'error';
   error?: string;
-}}
-
-export interface SyncStatus {
-  status: 'idle' | 'loading' | 'syncing' | 'success' | 'error';
-  error?: string;
 }
