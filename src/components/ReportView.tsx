@@ -1,5 +1,5 @@
 import React from 'react';
-import { Patient, AdmissionStatus } from '../types/patient';
+import { Patient, AdmissionStatus, TreatmentDirection } from '../types/patient';
 
 interface ReportViewProps {
   patients: Patient[];
@@ -34,21 +34,54 @@ export const ReportView: React.FC<ReportViewProps> = ({ patients, onClose }) => 
                 key={patient.id} 
                 className="p-4 border border-gray-200 rounded-lg bg-gray-50 break-inside-avoid"
               >
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start mb-2">
                   <h4 className="text-lg font-semibold text-indigo-700">
                     {index + 1}. {patient.name} - {patient.birthYear}
                   </h4>
-                  <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                    patient.status === AdmissionStatus.INPATIENT 
-                      ? 'bg-blue-100 text-blue-800' 
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {patient.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                      patient.treatmentDirection === TreatmentDirection.SURGERY 
+                        ? 'bg-purple-100 text-purple-800' 
+                        : patient.treatmentDirection === TreatmentDirection.CHEMOTHERAPY
+                        ? 'bg-orange-100 text-orange-800'
+                        : 'bg-teal-100 text-teal-800'
+                    }`}>
+                      {patient.treatmentDirection}
+                    </span>
+                    <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                      patient.status === AdmissionStatus.INPATIENT 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {patient.status}
+                    </span>
+                  </div>
                 </div>
                 <p className="text-sm text-gray-500 mb-2">
                   MSBN: {patient.patientCode} | Phòng: {patient.roomNumber}
                 </p>
+                
+                {patient.treatmentDirection === TreatmentDirection.SURGERY && patient.surgeryTeam && (
+                  <div className="mb-2 p-2 bg-purple-50 rounded border border-purple-200">
+                    <p className="text-sm">
+                      <span className="font-semibold text-purple-700">Ekip phẫu thuật:</span>
+                    </p>
+                    <p className="text-sm text-gray-700 ml-2">
+                      • PTV chính: {patient.surgeryTeam.mainSurgeon}
+                    </p>
+                    {patient.surgeryTeam.assistant1 && (
+                      <p className="text-sm text-gray-700 ml-2">
+                        • PTV phụ 1: {patient.surgeryTeam.assistant1}
+                      </p>
+                    )}
+                    {patient.surgeryTeam.assistant2 && (
+                      <p className="text-sm text-gray-700 ml-2">
+                        • PTV phụ 2: {patient.surgeryTeam.assistant2}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
                   <p className="break-words">
                     <span className="font-semibold text-gray-600">Lý do vào viện:</span> {patient.reason}
