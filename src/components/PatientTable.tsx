@@ -29,12 +29,13 @@ const StatusBadge: React.FC<{ status: AdmissionStatus }> = ({ status }) => {
 };
 
 const DesktopHeader: React.FC = () => (
-  <div className="hidden md:grid md:grid-cols-[40px_minmax(180px,1.5fr)_110px_80px_minmax(200px,2.5fr)_120px_100px] gap-x-6 px-6 py-3 text-xs text-gray-700 uppercase bg-gray-50 font-medium items-center border-b">
+  <div className="hidden md:grid md:grid-cols-[40px_minmax(180px,1.5fr)_110px_80px_minmax(200px,2.5fr)_minmax(150px,1.5fr)_120px_100px] gap-x-6 px-6 py-3 text-xs text-gray-700 uppercase bg-gray-50 font-medium items-center border-b">
     <span className="text-center">STT</span>
     <span>Họ Tên</span>
     <span>MSBN</span>
     <span className="text-center">Phòng</span>
     <span>Chẩn Đoán</span>
+    <span>Hướng Điều Trị</span>
     <span className="text-center">Tình Trạng</span>
     <span className="text-right">Hành Động</span>
   </div>
@@ -50,7 +51,7 @@ export const PatientTable: React.FC<PatientTableProps> = ({
       {patients.map((patient, index) => (
         <div 
           key={patient.id} 
-          className="bg-white p-4 mb-4 rounded-lg shadow md:shadow-none md:rounded-none md:mb-0 md:grid md:grid-cols-[40px_minmax(180px,1.5fr)_110px_80px_minmax(200px,2.5fr)_120px_100px] md:gap-x-6 md:px-6 md:py-4 md:border-b hover:bg-gray-50 items-center"
+          className="bg-white p-4 mb-4 rounded-lg shadow md:shadow-none md:rounded-none md:mb-0 md:grid md:grid-cols-[40px_minmax(180px,1.5fr)_110px_80px_minmax(200px,2.5fr)_minmax(150px,1.5fr)_120px_100px] md:gap-x-6 md:px-6 md:py-4 md:border-b hover:bg-gray-50 items-center"
         >
           {/* STT (Desktop) */}
           <div className="hidden md:block text-center text-sm text-gray-500">
@@ -100,6 +101,12 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                 <p className="text-gray-500">Chẩn đoán</p>
                 <p className="font-medium break-words">{patient.diagnosis}</p>
               </div>
+              {patient.treatmentOptions && patient.treatmentOptions.length > 0 && (
+                <div className="col-span-2">
+                  <p className="text-gray-500">Hướng điều trị</p>
+                  <p className="font-medium break-words">{patient.treatmentOptions.join(', ')}</p>
+                </div>
+              )}
             </div>
           </div>
           
@@ -115,6 +122,11 @@ export const PatientTable: React.FC<PatientTableProps> = ({
           </div>
           <div className="hidden md:block text-sm text-gray-700 break-words">
             {patient.diagnosis}
+          </div>
+          <div className="hidden md:block text-sm text-gray-700 break-words">
+            {patient.treatmentOptions && patient.treatmentOptions.length > 0 
+              ? patient.treatmentOptions.join(', ') 
+              : '-'}
           </div>
           <div className="hidden md:block text-center">
             <StatusBadge status={patient.status} />
