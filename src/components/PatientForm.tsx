@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Patient, PatientFormData, AdmissionStatus } from '../types/patient';
+import { Patient, PatientFormData, AdmissionStatus, TreatmentOption } from '../types/patient';
 import { validatePatientForm, sanitizeInput, ValidationError } from '../utils/validation';
 
 interface PatientFormProps {
@@ -22,6 +22,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     diagnosis: '',
     status: AdmissionStatus.INPATIENT,
     newNote: '',
+    treatmentOptions: [],
+    surgeryProcedure: '',
+    surgeryDate: '',
+    surgeon: '',
+    assistant1: '',
+    assistant2: '',
   });
 
   const [errors, setErrors] = useState<ValidationError[]>([]);
@@ -38,6 +44,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         diagnosis: patientToEdit.diagnosis,
         status: patientToEdit.status,
         newNote: '',
+        treatmentOptions: patientToEdit.treatmentOptions || [],
+        surgeryProcedure: patientToEdit.surgeryDetails?.procedure || '',
+        surgeryDate: patientToEdit.surgeryDetails?.surgeryDate || '',
+        surgeon: patientToEdit.surgeryDetails?.surgeon || '',
+        assistant1: patientToEdit.surgeryDetails?.assistant1 || '',
+        assistant2: patientToEdit.surgeryDetails?.assistant2 || '',
       });
     } else {
       setFormData({
@@ -49,6 +61,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         diagnosis: '',
         status: AdmissionStatus.INPATIENT,
         newNote: '',
+        treatmentOptions: [],
+        surgeryProcedure: '',
+        surgeryDate: '',
+        surgeon: '',
+        assistant1: '',
+        assistant2: '',
       });
     }
     setErrors([]);
@@ -66,6 +84,16 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     }
   };
 
+  const handleTreatmentOptionChange = (option: TreatmentOption) => {
+    setFormData(prev => {
+      const isSelected = prev.treatmentOptions.includes(option);
+      const newOptions = isSelected
+        ? prev.treatmentOptions.filter(o => o !== option)
+        : [...prev.treatmentOptions, option];
+      return { ...prev, treatmentOptions: newOptions };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -77,15 +105,32 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
     setIsSubmitting(true);
     try {
-      const patientData = {
-        ...formData,
+      const patientData: any = {
+        name: formData.name,
         birthYear: parseInt(formData.birthYear, 10),
+        patientCode: formData.patientCode,
+        roomNumber: formData.roomNumber,
+        reason: formData.reason,
+        diagnosis: formData.diagnosis,
+        status: formData.status,
+        treatmentOptions: formData.treatmentOptions,
       };
+
+      // Add surgery details if surgery is selected
+      if (formData.treatmentOptions.includes(TreatmentOption.SURGERY)) {
+        patientData.surgeryDetails = {
+          procedure: formData.surgeryProcedure,
+          surgeryDate: formData.surgeryDate,
+          surgeon: formData.surgeon,
+          assistant1: formData.assistant1,
+          assistant2: formData.assistant2,
+        };
+      }
       
       if (patientToEdit) {
         onSave({ ...patientData, id: patientToEdit.id });
       } else {
-        onSave({ ...patientData, notes: patientData.newNote });
+        onSave({ ...patientData, notes: formData.newNote });
       }
     } catch (error) {
       console.error('Error saving patient:', error);
@@ -248,6 +293,99 @@ export const PatientForm: React.FC<PatientFormProps> = ({
           </p>
         )}
       </div>
+
+      {/* Treatment Options Section */}
+      <div className="pt-4 mt-4 border-t">
+        <label className="block text-sm font-medium text-gray-700 mb-3">
+          Hướng điều trị
+        </label>
+        <div className="space-y-2">
+          {Object.values(TreatmentOption).map((option) => (
+            <label key={option} className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.treatmentOptions.includes(option)}
+                onChange={() => handleTreatmentOptionChange(option)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <span className="ml-2 text-sm text-gray-700">{option}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Surgery Details Section */}
+      {formData.treatmentOptions.includes(TreatmentOption.SURGERY) && (
+        <div className="pt-4 mt-4 border-t bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-md font-medium text-gray-800 mb-3">Chi tiết phẫu thuật</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Xử trí
+              </label>
+              <input
+                type="text"
+                name="surgeryProcedure"
+                value={formData.surgeryProcedure}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                maxLength={200}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Ngày mổ
+              </label>
+              <input
+                type="date"
+                name="surgeryDate"
+                value={formData.surgeryDate}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Phẫu thuật viên
+              </label>
+              <input
+                type="text"
+                name="surgeon"
+                value={formData.surgeon}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                maxLength={100}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Phụ 1
+              </label>
+              <input
+                type="text"
+                name="assistant1"
+                value={formData.assistant1}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                maxLength={100}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Phụ 2
+              </label>
+              <input
+                type="text"
+                name="assistant2"
+                value={formData.assistant2}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                maxLength={100}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700">
