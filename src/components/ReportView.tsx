@@ -1,5 +1,5 @@
 import React from 'react';
-import { Patient, AdmissionStatus } from '../types/patient';
+import { Patient, AdmissionStatus, TreatmentDirection } from '../types/patient';
 
 interface ReportViewProps {
   patients: Patient[];
@@ -56,6 +56,34 @@ export const ReportView: React.FC<ReportViewProps> = ({ patients, onClose }) => 
                   <p className="break-words">
                     <span className="font-semibold text-gray-600">Chẩn đoán:</span> {patient.diagnosis}
                   </p>
+                  {patient.treatmentDirection && (
+                    <p className="break-words">
+                      <span className="font-semibold text-gray-600">Hướng điều trị:</span> {patient.treatmentDirection}
+                    </p>
+                  )}
+                  {patient.treatmentDirection === TreatmentDirection.SURGERY && patient.surgeryDetails && (
+                    <>
+                      <p className="break-words">
+                        <span className="font-semibold text-gray-600">Phương pháp phẫu thuật:</span> {patient.surgeryDetails.method}
+                      </p>
+                      <p className="break-words">
+                        <span className="font-semibold text-gray-600">Ngày mổ:</span> {new Date(patient.surgeryDetails.surgeryDate).toLocaleDateString('vi-VN')}
+                      </p>
+                      <p className="break-words">
+                        <span className="font-semibold text-gray-600">Phẫu thuật viên chính:</span> {patient.surgeryDetails.mainSurgeon}
+                      </p>
+                      {patient.surgeryDetails.assistant1 && (
+                        <p className="break-words">
+                          <span className="font-semibold text-gray-600">Phụ 1:</span> {patient.surgeryDetails.assistant1}
+                        </p>
+                      )}
+                      {patient.surgeryDetails.assistant2 && (
+                        <p className="break-words">
+                          <span className="font-semibold text-gray-600">Phụ 2:</span> {patient.surgeryDetails.assistant2}
+                        </p>
+                      )}
+                    </>
+                  )}
                   <p className="col-span-2 break-words">
                     <span className="font-semibold text-gray-600">Ghi chú gần nhất:</span> {patient.notes}
                   </p>

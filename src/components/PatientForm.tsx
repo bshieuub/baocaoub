@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Patient, PatientFormData, AdmissionStatus } from '../types/patient';
+import { Patient, PatientFormData, AdmissionStatus, TreatmentDirection, SurgeryDetails } from '../types/patient';
 import { validatePatientForm, sanitizeInput, ValidationError } from '../utils/validation';
 
 interface PatientFormProps {
@@ -22,6 +22,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     diagnosis: '',
     status: AdmissionStatus.INPATIENT,
     newNote: '',
+    treatmentDirection: undefined,
+    surgeryDetails: undefined,
   });
 
   const [errors, setErrors] = useState<ValidationError[]>([]);
@@ -38,6 +40,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         diagnosis: patientToEdit.diagnosis,
         status: patientToEdit.status,
         newNote: '',
+        treatmentDirection: patientToEdit.treatmentDirection,
+        surgeryDetails: patientToEdit.surgeryDetails,
       });
     } else {
       setFormData({
@@ -49,6 +53,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         diagnosis: '',
         status: AdmissionStatus.INPATIENT,
         newNote: '',
+        treatmentDirection: undefined,
+        surgeryDetails: undefined,
       });
     }
     setErrors([]);
@@ -64,6 +70,31 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     if (errors.length > 0) {
       setErrors(prev => prev.filter(error => error.field !== name));
     }
+  };
+
+  const handleTreatmentDirectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as TreatmentDirection;
+    setFormData(prev => ({ 
+      ...prev, 
+      treatmentDirection: value,
+      surgeryDetails: value === TreatmentDirection.SURGERY ? {
+        method: '',
+        surgeryDate: '',
+        mainSurgeon: '',
+        assistant1: '',
+        assistant2: ''
+      } : undefined
+    }));
+  };
+
+  const handleSurgeryDetailChange = (field: keyof SurgeryDetails, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      surgeryDetails: prev.surgeryDetails ? {
+        ...prev.surgeryDetails,
+        [field]: sanitizeInput(value)
+      } : undefined
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -203,6 +234,23 @@ export const PatientForm: React.FC<PatientFormProps> = ({
             ))}
           </select>
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Hướng điều trị
+          </label>
+          <select
+            name="treatmentDirection"
+            value={formData.treatmentDirection || ''}
+            onChange={handleTreatmentDirectionChange}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="">Chọn hướng điều trị</option>
+            {Object.values(TreatmentDirection).map(direction => (
+              <option key={direction} value={direction}>{direction}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div>
@@ -248,6 +296,80 @@ export const PatientForm: React.FC<PatientFormProps> = ({
           </p>
         )}
       </div>
+
+      {formData.treatmentDirection === TreatmentDirection.SURGERY && (
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <h3 className="text-lg font-medium text-blue-800 mb-4">Chi tiết phẫu thuật</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Phương pháp phẫu thuật *
+              </label>
+              <input
+                type="text"
+                value={formData.surgeryDetails?.method || ''}
+                onChange={(e) => handleSurgeryDetailChange('method', e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                required
+                maxLength={200}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Ngày mổ *
+              </label>
+              <input
+                type="date"
+                value={formData.surgeryDetails?.surgeryDate || ''}
+                onChange={(e) => handleSurgeryDetailChange('surgeryDate', e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Phẫu thuật viên chính *
+              </label>
+              <input
+                type="text"
+                value={formData.surgeryDetails?.mainSurgeon || ''}
+                onChange={(e) => handleSurgeryDetailChange('mainSurgeon', e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                required
+                maxLength={100}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Phụ 1
+              </label>
+              <input
+                type="text"
+                value={formData.surgeryDetails?.assistant1 || ''}
+                onChange={(e) => handleSurgeryDetailChange('assistant1', e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                maxLength={100}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Phụ 2
+              </label>
+              <input
+                type="text"
+                value={formData.surgeryDetails?.assistant2 || ''}
+                onChange={(e) => handleSurgeryDetailChange('assistant2', e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                maxLength={100}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700">
