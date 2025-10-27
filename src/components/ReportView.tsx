@@ -1,5 +1,5 @@
 import React from 'react';
-import { Patient, AdmissionStatus } from '../types/patient';
+import { Patient, AdmissionStatus, TreatmentOption } from '../types/patient';
 
 interface ReportViewProps {
   patients: Patient[];
@@ -68,6 +68,37 @@ export const ReportView: React.FC<ReportViewProps> = ({ patients, onClose }) => 
                   <p className="col-span-2 break-words">
                     <span className="font-semibold text-gray-600">Ghi chú gần nhất:</span> {getLatestNote(patient)}
                   </p>
+                  
+                  {/* Treatment Options */}
+                  {patient.treatmentOptions && patient.treatmentOptions.length > 0 && (
+                    <p className="col-span-2 break-words">
+                      <span className="font-semibold text-gray-600">Hướng điều trị:</span> {patient.treatmentOptions.join(', ')}
+                    </p>
+                  )}
+                  
+                  {/* Surgery Details */}
+                  {patient.treatmentOptions?.includes(TreatmentOption.SURGERY) && patient.surgeryDetails && (
+                    <div className="col-span-2 mt-2 pt-2 border-t border-gray-300">
+                      <p className="font-semibold text-gray-700 mb-1">Chi tiết phẫu thuật:</p>
+                      <div className="ml-4 space-y-1">
+                        {patient.surgeryDetails.procedure && (
+                          <p><span className="font-semibold text-gray-600">Xử trí:</span> {patient.surgeryDetails.procedure}</p>
+                        )}
+                        {patient.surgeryDetails.surgeryDate && (
+                          <p><span className="font-semibold text-gray-600">Ngày mổ:</span> {new Date(patient.surgeryDetails.surgeryDate).toLocaleDateString('vi-VN')}</p>
+                        )}
+                        {patient.surgeryDetails.surgeon && (
+                          <p><span className="font-semibold text-gray-600">Phẫu thuật viên:</span> {patient.surgeryDetails.surgeon}</p>
+                        )}
+                        {patient.surgeryDetails.assistant1 && (
+                          <p><span className="font-semibold text-gray-600">Phụ 1:</span> {patient.surgeryDetails.assistant1}</p>
+                        )}
+                        {patient.surgeryDetails.assistant2 && (
+                          <p><span className="font-semibold text-gray-600">Phụ 2:</span> {patient.surgeryDetails.assistant2}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))
