@@ -4,16 +4,23 @@
 
 /* Custom styles for print functionality */
 @media print {
-  /* Define page layout for printing */
+  /* Define page layout for printing - A4 with proper margins */
   @page {
-    size: A4;
-    margin: 1.5cm;
+    size: A4 portrait;
+    margin: 1.5cm 1.5cm 1.5cm 1.5cm;
   }
 
-  body {
-    background-color: #fff !important; /* Ensure white background */
-    margin: 0;
-    padding: 0;
+  * {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  html, body {
+    background-color: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    width: 100% !important;
   }
 
   /* Hide all elements specifically marked as non-printable.
@@ -30,11 +37,14 @@
     position: static !important;
     background: none !important;
     padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
   }
 
   /* 2. Reset the modal's main dialog box (the white container) */
   .fixed.inset-0 > div {
-    width: auto !important;
+    position: static !important;
+    width: 100% !important;
     max-width: none !important;
     height: auto !important;
     max-height: none !important;
@@ -43,6 +53,7 @@
     display: block !important; /* Crucial: This disables flexbox constraints */
     margin: 0 !important;
     padding: 0 !important;
+    overflow: visible !important;
   }
 
   /* 3. Reset the modal's content area to allow it to expand */
@@ -51,30 +62,65 @@
     height: auto !important;
     max-height: none !important;
     padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
   }
 
   /* 4. Let the print area flow naturally within the document */
   #print-area {
-    padding: 0; /* Page margins are handled by @page */
-    margin: 0;
-    font-size: 11pt; /* Use points for better print scaling */
+    padding: 0 !important; /* Page margins are handled by @page */
+    margin: 0 !important;
+    font-size: 11pt !important; /* Use points for better print scaling */
+    width: 100% !important;
+    max-width: 100% !important;
   }
   
   /* Ensure patient blocks do not get split across pages */
   #print-area .break-inside-avoid {
     page-break-inside: avoid;
+    break-inside: avoid;
   }
 
   /* Specific font sizes for report elements */
   #print-area h3 {
-    font-size: 16pt;
+    font-size: 16pt !important;
+    margin-bottom: 0.5cm !important;
   }
   #print-area h4 {
-    font-size: 13pt;
+    font-size: 13pt !important;
   }
-  #print-area p, #print-area span, #print-area div {
+  #print-area p {
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+  }
+  #print-area span, #print-area div {
     /* !important is needed to override inline tailwind styles */
     font-size: 11pt !important;
+  }
+
+  /* Ensure proper spacing in print */
+  #print-area .space-y-4 > * + * {
+    margin-top: 0.4cm !important;
+  }
+
+  /* Patient card styling for print */
+  #print-area .p-4 {
+    padding: 0.3cm !important;
+  }
+
+  #print-area .border {
+    border-width: 1px !important;
+  }
+
+  /* Fix for rounded corners in print */
+  #print-area .rounded-lg {
+    border-radius: 4px !important;
+  }
+
+  /* Ensure text doesn't overflow */
+  #print-area .break-words {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
   }
 }
 

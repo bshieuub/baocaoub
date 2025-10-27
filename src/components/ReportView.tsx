@@ -13,6 +13,15 @@ export const ReportView: React.FC<ReportViewProps> = ({ patients, onClose }) => 
     )
     .sort((a, b) => (a.roomNumber || '').localeCompare(b.roomNumber || '', undefined, { numeric: true }));
 
+  // Helper function to get the latest note from patient history
+  const getLatestNote = (patient: Patient): string => {
+    if (!patient.history || patient.history.length === 0) {
+      return patient.notes || '';
+    }
+    const latestEntry = patient.history[patient.history.length - 1];
+    return latestEntry.notes || '';
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -57,7 +66,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ patients, onClose }) => 
                     <span className="font-semibold text-gray-600">Chẩn đoán:</span> {patient.diagnosis}
                   </p>
                   <p className="col-span-2 break-words">
-                    <span className="font-semibold text-gray-600">Ghi chú gần nhất:</span> {patient.notes}
+                    <span className="font-semibold text-gray-600">Ghi chú gần nhất:</span> {getLatestNote(patient)}
                   </p>
                 </div>
               </div>
