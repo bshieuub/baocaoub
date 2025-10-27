@@ -69,7 +69,7 @@ export const validatePatientForm = (data: PatientFormData): ValidationError[] =>
 
 export const sanitizeInput = (input: string): string => {
   return input
-    .trim()
+    .replace(/^\s+/, '') // Only remove leading whitespace, allow trailing spaces during typing
     .replace(/[<>]/g, '') // Remove potential HTML tags
     .substring(0, 1000); // Limit length
 };
