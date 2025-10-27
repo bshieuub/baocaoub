@@ -87,14 +87,15 @@ export const ReportView: React.FC<ReportViewProps> = ({ patients, onClose }) => 
                         {patient.surgeryDetails.surgeryDate && (
                           <p><span className="font-semibold text-gray-600">Ngày mổ:</span> {new Date(patient.surgeryDetails.surgeryDate).toLocaleDateString('vi-VN')}</p>
                         )}
-                        {patient.surgeryDetails.surgeon && (
-                          <p><span className="font-semibold text-gray-600">Phẫu thuật viên:</span> {patient.surgeryDetails.surgeon}</p>
-                        )}
-                        {patient.surgeryDetails.assistant1 && (
-                          <p><span className="font-semibold text-gray-600">Phụ 1:</span> {patient.surgeryDetails.assistant1}</p>
-                        )}
-                        {patient.surgeryDetails.assistant2 && (
-                          <p><span className="font-semibold text-gray-600">Phụ 2:</span> {patient.surgeryDetails.assistant2}</p>
+                        {(patient.surgeryDetails.surgeon || patient.surgeryDetails.assistant1 || patient.surgeryDetails.assistant2) && (
+                          <p>
+                            <span className="font-semibold text-gray-600">PTV:</span>{' '}
+                            {[
+                              patient.surgeryDetails.surgeon,
+                              patient.surgeryDetails.assistant1,
+                              patient.surgeryDetails.assistant2
+                            ].filter(Boolean).join(' - ')}
+                          </p>
                         )}
                       </div>
                     </div>
