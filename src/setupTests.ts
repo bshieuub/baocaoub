@@ -1,5 +1,6 @@
 // Jest setup file
-import '@testing-library/jest-dom';
+// Note: @testing-library/jest-dom is not installed, so we'll mock it
+// import '@testing-library/jest-dom';
 
 // Mock Firebase
 jest.mock('./config/firebase', () => ({
@@ -38,7 +39,7 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock IntersectionObserver
-global.IntersectionObserver = class IntersectionObserver {
+(global as any).IntersectionObserver = class IntersectionObserver {
   constructor() {}
   disconnect() {}
   observe() {}
@@ -46,7 +47,7 @@ global.IntersectionObserver = class IntersectionObserver {
 };
 
 // Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
+(global as any).ResizeObserver = class ResizeObserver {
   constructor() {}
   disconnect() {}
   observe() {}

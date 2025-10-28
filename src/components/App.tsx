@@ -4,15 +4,15 @@ import { auth } from '../config/firebase';
 import { usePatients } from '../hooks/usePatients';
 import { usePatientFiltering, usePatientSorting, usePatientGrouping } from '../hooks/usePatientFiltering';
 import { useOfflineSync } from '../hooks/useOfflineSync';
-import { Patient, AdmissionStatus } from '../types/patient';
+import { Patient } from '../types/patient';
 import { Modal } from './Modal';
 import { PatientForm } from './PatientForm';
 import { PatientTable, DesktopHeader } from './PatientTable';
 import { ConfirmModal } from './ConfirmModal';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
-import { LoadingSpinner, LoadingOverlay } from './LoadingSpinner';
+import { LoadingSpinner } from './LoadingSpinner';
 import { PatientTableSkeleton } from './PatientTableSkeleton';
-import { PATIENT_STATUS_COLORS, SUCCESS_MESSAGES, ERROR_MESSAGES } from '../constants';
+import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../constants';
 
 // Lazy load heavy components
 const ReportView = lazy(() => import('./ReportView').then(module => ({ default: module.ReportView })));

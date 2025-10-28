@@ -1,9 +1,4 @@
-import { 
-  getAllPatients, 
-  addPatient, 
-  updatePatient, 
-  deletePatient 
-} from '../services/patientService';
+import { PatientService } from '../services/patientService';
 import { Patient, AdmissionStatus, TreatmentOption } from '../types/patient';
 
 // Mock Firebase
@@ -25,7 +20,7 @@ describe('PatientService', () => {
   const mockPatient: Patient = {
     id: '1',
     name: 'Nguyễn Văn A',
-    birthYear: '1990',
+    birthYear: 1990,
     patientCode: 'BN001',
     roomNumber: '101',
     reason: 'Khám sức khỏe',
@@ -60,7 +55,7 @@ describe('PatientService', () => {
       const { db } = require('../config/firebase');
       db.collection.mockReturnValue(mockCollection);
 
-      const result = await getAllPatients();
+      const result = await PatientService.getAllPatients();
       expect(result).toEqual([mockPatient]);
     });
 
@@ -74,7 +69,7 @@ describe('PatientService', () => {
       const { db } = require('../config/firebase');
       db.collection.mockReturnValue(mockCollection);
 
-      const result = await getAllPatients();
+      const result = await PatientService.getAllPatients();
       expect(result).toEqual([]);
     });
 
@@ -86,7 +81,7 @@ describe('PatientService', () => {
       const { db } = require('../config/firebase');
       db.collection.mockReturnValue(mockCollection);
 
-      await expect(getAllPatients()).rejects.toThrow('Lỗi khi tải danh sách bệnh nhân');
+      await expect(PatientService.getAllPatients()).rejects.toThrow('Không thể tải danh sách bệnh nhân');
     });
   });
 
@@ -101,7 +96,7 @@ describe('PatientService', () => {
       const { db } = require('../config/firebase');
       db.collection.mockReturnValue(mockCollection);
 
-      const result = await addPatient(mockPatient);
+      const result = await PatientService.addPatient(mockPatient);
       expect(result).toBe('1');
       expect(mockCollection.add).toHaveBeenCalledWith(mockPatient);
     });
@@ -114,7 +109,7 @@ describe('PatientService', () => {
       const { db } = require('../config/firebase');
       db.collection.mockReturnValue(mockCollection);
 
-      await expect(addPatient(mockPatient)).rejects.toThrow('Lỗi khi thêm bệnh nhân');
+      await expect(PatientService.addPatient(mockPatient)).rejects.toThrow('Không thể thêm bệnh nhân mới');
     });
   });
 
@@ -131,7 +126,7 @@ describe('PatientService', () => {
       const { db } = require('../config/firebase');
       db.collection.mockReturnValue(mockCollection);
 
-      await updatePatient('1', mockPatient);
+      await PatientService.updatePatient('1', mockPatient);
       expect(mockCollection.doc).toHaveBeenCalledWith('1');
       expect(mockDoc.set).toHaveBeenCalledWith(mockPatient);
     });
@@ -148,7 +143,7 @@ describe('PatientService', () => {
       const { db } = require('../config/firebase');
       db.collection.mockReturnValue(mockCollection);
 
-      await expect(updatePatient('1', mockPatient)).rejects.toThrow('Lỗi khi cập nhật bệnh nhân');
+      await expect(PatientService.updatePatient('1', mockPatient)).rejects.toThrow('Không thể cập nhật thông tin bệnh nhân');
     });
   });
 
@@ -165,7 +160,7 @@ describe('PatientService', () => {
       const { db } = require('../config/firebase');
       db.collection.mockReturnValue(mockCollection);
 
-      await deletePatient('1');
+      await PatientService.deletePatient('1');
       expect(mockCollection.doc).toHaveBeenCalledWith('1');
       expect(mockDoc.delete).toHaveBeenCalled();
     });
@@ -182,7 +177,7 @@ describe('PatientService', () => {
       const { db } = require('../config/firebase');
       db.collection.mockReturnValue(mockCollection);
 
-      await expect(deletePatient('1')).rejects.toThrow('Lỗi khi xóa bệnh nhân');
+      await expect(PatientService.deletePatient('1')).rejects.toThrow('Không thể xóa bệnh nhân');
     });
   });
 });

@@ -1,68 +1,74 @@
-# 🚀 Hướng Dẫn Triển Khai Vercel
+# Hướng dẫn triển khai lên Vercel
 
-## Bước 1: Chuẩn bị Environment Variables
+## Bước 1: Chuẩn bị môi trường
 
-### 1.1. Lấy thông tin Firebase từ file .env.local
+### 1.1. Cài đặt Vercel CLI
 ```bash
-# Mở file .env.local và copy các giá trị sau:
-VITE_FIREBASE_API_KEY=AIzaSyCSbyl8FkGDjoUCUuO2EtShH--uAHOL3hY
-VITE_FIREBASE_AUTH_DOMAIN=noitruub.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=noitruub
-VITE_FIREBASE_STORAGE_BUCKET=noitruub.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=938135666001
-VITE_FIREBASE_APP_ID=1:938135666001:web:2476aba951c1a2b24fa770
-VITE_FIREBASE_MEASUREMENT_ID=G-WBZ3PTNKXZ
+npm install -g vercel
 ```
 
-## Bước 2: Cấu hình Vercel
+### 1.2. Đăng nhập Vercel
+```bash
+vercel login
+```
 
-### 2.1. Đăng nhập Vercel
-1. Truy cập [vercel.com](https://vercel.com)
-2. Đăng nhập bằng GitHub account
-3. Click "New Project"
+## Bước 2: Cấu hình Environment Variables
 
-### 2.2. Import Project
-1. Chọn repository từ GitHub
-2. Vercel sẽ tự động detect Vite framework
-3. Click "Deploy" (chưa cần cấu hình gì thêm)
+### 2.1. Tạo file .env.local
+```bash
+cp .env.example .env.local
+```
 
-### 2.3. Cấu hình Environment Variables
-1. Vào **Settings** > **Environment Variables**
-2. Thêm từng biến môi trường:
+### 2.2. Cập nhật các biến môi trường trong .env.local
+```env
+VITE_FIREBASE_API_KEY=your_api_key_here
+VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
+```
 
-| Name | Value | Environment |
-|------|-------|-------------|
-| `VITE_FIREBASE_API_KEY` | `AIzaSyCSbyl8FkGDjoUCUuO2EtShH--uAHOL3hY` | Production, Preview, Development |
-| `VITE_FIREBASE_AUTH_DOMAIN` | `noitruub.firebaseapp.com` | Production, Preview, Development |
-| `VITE_FIREBASE_PROJECT_ID` | `noitruub` | Production, Preview, Development |
-| `VITE_FIREBASE_STORAGE_BUCKET` | `noitruub.firebasestorage.app` | Production, Preview, Development |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | `938135666001` | Production, Preview, Development |
-| `VITE_FIREBASE_APP_ID` | `1:938135666001:web:2476aba951c1a2b24fa770` | Production, Preview, Development |
-| `VITE_FIREBASE_MEASUREMENT_ID` | `G-WBZ3PTNKXZ` | Production, Preview, Development |
+## Bước 3: Triển khai
 
-### 2.4. Redeploy
-1. Sau khi thêm tất cả Environment Variables
-2. Vào **Deployments** tab
-3. Click **"Redeploy"** trên deployment mới nhất
-4. Hoặc push một commit mới để trigger auto-deploy
+### 3.1. Triển khai lần đầu
+```bash
+vercel
+```
 
-## Bước 3: Cấu hình Firebase Security Rules
+### 3.2. Cấu hình Environment Variables trên Vercel Dashboard
+1. Vào Vercel Dashboard
+2. Chọn project của bạn
+3. Vào Settings > Environment Variables
+4. Thêm các biến môi trường:
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+   - `VITE_GEMINI_API_KEY` (optional)
 
-### 3.1. Mở Firebase Console
-1. Truy cập [Firebase Console](https://console.firebase.google.com)
-2. Chọn project `noitruub`
+### 3.3. Redeploy sau khi cấu hình environment variables
+```bash
+vercel --prod
+```
 
-### 3.2. Cấu hình Firestore Rules
-1. Vào **Firestore Database** > **Rules**
-2. Thay thế nội dung bằng:
+## Bước 4: Cấu hình Firebase
+
+### 4.1. Cập nhật Firebase Security Rules
+Deploy rules mới lên Firebase Console:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Patients collection - only authenticated users can read/write
+    // Patients collection - only authenticated users can read/write with validation
     match /patients/{document} {
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null 
+        && isValidPatientData(request.resource.data)
+        && isValidUser(request.auth);
     }
     
     // Deny all other collections
@@ -70,86 +76,138 @@ service cloud.firestore {
       allow read, write: if false;
     }
   }
+  
+  // Validation functions
+  function isValidPatientData(data) {
+    return data.keys().hasAll(['name', 'patientCode', 'roomNumber', 'diagnosis', 'status'])
+      && data.name is string
+      && data.patientCode is string
+      && data.roomNumber is string
+      && data.diagnosis is string
+      && data.status in ['Nội trú', 'Ra viện', 'Dự kiến ra viện']
+      && data.name.size() >= 2
+      && data.name.size() <= 100
+      && data.patientCode.size() >= 3
+      && data.patientCode.size() <= 20
+      && data.roomNumber.size() >= 1
+      && data.roomNumber.size() <= 10
+      && data.diagnosis.size() >= 3
+      && data.diagnosis.size() <= 500;
+  }
+  
+  function isValidUser(auth) {
+    return auth != null
+      && auth.token.email_verified == true
+      && auth.token.email.matches('.*@.*\\.com$');
+  }
 }
 ```
 
-3. Click **"Publish"**
+### 4.2. Cấu hình Firebase Authentication
+1. Vào Firebase Console > Authentication
+2. Bật Email/Password authentication
+3. Thêm domain Vercel vào Authorized domains
 
-## Bước 4: Test Ứng Dụng
+## Bước 5: Kiểm tra triển khai
 
-### 4.1. Truy cập URL
-- URL sẽ có dạng: `https://your-project-name.vercel.app`
-
-### 4.2. Test các chức năng
-1. **Đăng nhập**: Sử dụng tài khoản Firebase đã tạo
-2. **Thêm bệnh nhân**: Test form validation
-3. **Sửa thông tin**: Test edit functionality
-4. **Xóa bệnh nhân**: Test delete với confirmation
-5. **In báo cáo**: Test print functionality
-6. **Tìm kiếm**: Test search và filter
-
-## Bước 5: Cấu hình Domain (Tùy chọn)
-
-### 5.1. Thêm Custom Domain
-1. Vào **Settings** > **Domains**
-2. Thêm domain của bạn
-3. Cấu hình DNS theo hướng dẫn
-
-### 5.2. Cấu hình SSL
-- Vercel tự động cấu hình SSL certificate
-
-## 🔧 Troubleshooting
-
-### Lỗi: "Environment Variable references Secret which does not exist"
-**Nguyên nhân**: File `vercel.json` có cấu hình sai
-**Giải pháp**: Đã xóa file `vercel.json`, Vercel sẽ tự động detect Vite
-
-### Lỗi: "Firebase config is not valid"
-**Nguyên nhân**: Environment Variables chưa được set đúng
-**Giải pháp**: Kiểm tra lại tất cả biến môi trường trong Vercel Dashboard
-
-### Lỗi: "Build failed"
-**Nguyên nhân**: TypeScript hoặc dependency errors
-**Giải pháp**: 
+### 5.1. Kiểm tra build locally
 ```bash
-# Test build local
 npm run build
-npm run type-check
+npm run preview
 ```
 
-### Lỗi: "404 on refresh"
-**Nguyên nhân**: SPA routing không được handle
-**Giải pháp**: Vercel tự động handle SPA routing cho Vite
+### 5.2. Kiểm tra trên Vercel
+1. Vào Vercel Dashboard
+2. Kiểm tra build logs
+3. Test các tính năng chính
 
-## 📊 Performance Tips
+## Bước 6: Cấu hình Custom Domain (Optional)
 
-### 1. Optimize Bundle Size
-- Code splitting đã được cấu hình
-- Manual chunks cho vendor và firebase
-- Tree shaking tự động
+### 6.1. Thêm custom domain
+1. Vào Vercel Dashboard > Settings > Domains
+2. Thêm domain của bạn
+3. Cấu hình DNS records
 
-### 2. Caching
-- Static assets được cache tự động
-- API calls có thể cache với React Query
+### 6.2. Cập nhật Firebase Authorized domains
+Thêm custom domain vào Firebase Console > Authentication > Settings
 
-### 3. Monitoring
-- Vercel Analytics tự động
-- Error tracking với Vercel Functions
+## Troubleshooting
 
-## 🎯 Kết Quả
+### Lỗi Build
+```bash
+# Kiểm tra TypeScript errors
+npm run type-check
 
-Sau khi triển khai thành công:
-- ✅ Ứng dụng web hoạt động trên Vercel
-- ✅ HTTPS tự động
-- ✅ Auto-deploy khi push code
-- ✅ Performance monitoring
-- ✅ Error tracking
-- ✅ Custom domain (nếu cấu hình)
+# Kiểm tra linting errors
+npm run lint
 
-## 📞 Hỗ Trợ
+# Build locally để test
+npm run build
+```
 
-Nếu gặp vấn đề:
-1. Kiểm tra logs trong Vercel Dashboard
-2. Test build local: `npm run build`
-3. Kiểm tra Environment Variables
-4. Kiểm tra Firebase Security Rules
+### Lỗi Environment Variables
+- Kiểm tra tất cả biến môi trường đã được set trên Vercel
+- Đảm bảo tên biến bắt đầu với `VITE_`
+- Redeploy sau khi thay đổi environment variables
+
+### Lỗi Firebase
+- Kiểm tra Firebase config
+- Kiểm tra Security Rules
+- Kiểm tra Authentication settings
+
+### Lỗi PWA
+- Đảm bảo HTTPS được enable
+- Kiểm tra Service Worker
+- Kiểm tra manifest.json
+
+## Các lệnh hữu ích
+
+```bash
+# Deploy preview
+vercel
+
+# Deploy production
+vercel --prod
+
+# Xem logs
+vercel logs
+
+# Xem thông tin project
+vercel ls
+
+# Xóa deployment
+vercel remove
+```
+
+## Monitoring
+
+### Vercel Analytics
+1. Vào Vercel Dashboard > Analytics
+2. Xem performance metrics
+3. Monitor errors
+
+### Firebase Analytics
+1. Vào Firebase Console > Analytics
+2. Xem user behavior
+3. Monitor crashes
+
+## Backup và Recovery
+
+### Database Backup
+```bash
+# Export data từ Firebase
+firebase firestore:export gs://your-bucket/backup
+
+# Import data vào Firebase
+firebase firestore:import gs://your-bucket/backup
+```
+
+### Code Backup
+```bash
+# Clone repository
+git clone your-repo-url
+
+# Backup to different service
+git remote add backup your-backup-repo-url
+git push backup main
+```

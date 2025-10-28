@@ -6,7 +6,7 @@ import {
   validateRoomNumber,
   validateEmail 
 } from '../utils/validation';
-import { PatientFormData, TreatmentOption } from '../types/patient';
+import { PatientFormData, TreatmentOption, AdmissionStatus } from '../types/patient';
 
 describe('Validation Utils', () => {
   describe('validatePatientForm', () => {
@@ -17,9 +17,14 @@ describe('Validation Utils', () => {
       roomNumber: '101',
       reason: 'Khám sức khỏe định kỳ',
       diagnosis: 'Ung thư phổi',
-      status: 'Nội trú',
+      status: AdmissionStatus.INPATIENT,
+      newNote: '',
       treatmentOptions: [TreatmentOption.CHEMOTHERAPY],
-      notes: 'Bệnh nhân ổn định'
+      surgeryProcedure: '',
+      surgeryDate: '',
+      surgeon: '',
+      assistant1: '',
+      assistant2: ''
     };
 
     it('should pass validation for valid data', () => {
