@@ -14,6 +14,16 @@ export const validatePatientForm = (data: PatientFormData): ValidationError[] =>
       field: 'name',
       message: 'Họ tên phải có ít nhất 2 ký tự'
     });
+  } else if (!validateVietnameseName(data.name)) {
+    errors.push({
+      field: 'name',
+      message: 'Họ tên chỉ được chứa chữ cái và khoảng trắng'
+    });
+  } else if (!validateInputLength(data.name, 2, 100)) {
+    errors.push({
+      field: 'name',
+      message: 'Họ tên phải từ 2 đến 100 ký tự'
+    });
   }
 
   // Birth year validation
@@ -38,6 +48,11 @@ export const validatePatientForm = (data: PatientFormData): ValidationError[] =>
       field: 'patientCode',
       message: 'Mã số bệnh nhân phải có ít nhất 3 ký tự'
     });
+  } else if (!validatePatientCode(data.patientCode.toUpperCase())) {
+    errors.push({
+      field: 'patientCode',
+      message: 'Mã số bệnh nhân chỉ được chứa chữ cái và số (3-20 ký tự)'
+    });
   }
 
   // Room number validation
@@ -45,6 +60,11 @@ export const validatePatientForm = (data: PatientFormData): ValidationError[] =>
     errors.push({
       field: 'roomNumber',
       message: 'Số phòng không được để trống'
+    });
+  } else if (!validateRoomNumber(data.roomNumber.toUpperCase())) {
+    errors.push({
+      field: 'roomNumber',
+      message: 'Số phòng chỉ được chứa chữ cái và số (1-10 ký tự)'
     });
   }
 
@@ -54,6 +74,11 @@ export const validatePatientForm = (data: PatientFormData): ValidationError[] =>
       field: 'reason',
       message: 'Lý do vào viện phải có ít nhất 5 ký tự'
     });
+  } else if (!validateInputLength(data.reason, 5, 500)) {
+    errors.push({
+      field: 'reason',
+      message: 'Lý do vào viện phải từ 5 đến 500 ký tự'
+    });
   }
 
   // Diagnosis validation
@@ -61,6 +86,11 @@ export const validatePatientForm = (data: PatientFormData): ValidationError[] =>
     errors.push({
       field: 'diagnosis',
       message: 'Chẩn đoán phải có ít nhất 3 ký tự'
+    });
+  } else if (!validateInputLength(data.diagnosis, 3, 500)) {
+    errors.push({
+      field: 'diagnosis',
+      message: 'Chẩn đoán phải từ 3 đến 500 ký tự'
     });
   }
 
@@ -88,7 +118,36 @@ export const sanitizeInput = (input: string): string => {
   return input
     .replace(/^\s+/, '') // Only remove leading whitespace, allow trailing spaces during typing
     .replace(/[<>]/g, '') // Remove potential HTML tags
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/on\w+\s*=/gi, '') // Remove event handlers
+    .replace(/script/gi, '') // Remove script tags
+    .replace(/[^\w\s\u00C0-\u1EF9.,!?()-]/g, '') // Only allow Vietnamese characters, basic punctuation
     .substring(0, 1000); // Limit length
+};
+
+export const sanitizeHtml = (input: string): string => {
+  const div = document.createElement('div');
+  div.textContent = input;
+  return div.innerHTML;
+};
+
+export const validateInputLength = (input: string, min: number, max: number): boolean => {
+  return input.length >= min && input.length <= max;
+};
+
+export const validateVietnameseName = (name: string): boolean => {
+  const vietnameseNameRegex = /^[a-zA-Z\u00C0-\u1EF9\s]+$/;
+  return vietnameseNameRegex.test(name) && name.trim().length >= 2;
+};
+
+export const validatePatientCode = (code: string): boolean => {
+  const patientCodeRegex = /^[A-Z0-9]{3,20}$/;
+  return patientCodeRegex.test(code);
+};
+
+export const validateRoomNumber = (room: string): boolean => {
+  const roomRegex = /^[A-Z0-9]{1,10}$/;
+  return roomRegex.test(room);
 };
 
 export const validateEmail = (email: string): boolean => {

@@ -1,14 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { usePatients } from '../hooks/usePatients';
+import { usePatientFiltering, usePatientSorting, usePatientGrouping } from '../hooks/usePatientFiltering';
+import { useOfflineSync } from '../hooks/useOfflineSync';
 import { Patient, AdmissionStatus } from '../types/patient';
 import { Modal } from './Modal';
 import { PatientForm } from './PatientForm';
 import { PatientTable, DesktopHeader } from './PatientTable';
-import { ReportView } from './ReportView';
 import { ConfirmModal } from './ConfirmModal';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
+import { LoadingSpinner, LoadingOverlay } from './LoadingSpinner';
+import { PatientTableSkeleton } from './PatientTableSkeleton';
+import { PATIENT_STATUS_COLORS, SUCCESS_MESSAGES, ERROR_MESSAGES } from '../constants';
+
+// Lazy load heavy components
+const ReportView = lazy(() => import('./ReportView').then(module => ({ default: module.ReportView })));
 
 interface AppProps {
   user: any;
@@ -23,6 +30,8 @@ export const App: React.FC<AppProps> = ({ user }) => {
     deletePatient,
   } = usePatients();
 
+  const { isOnline, hasOfflineData, addPendingChange } = useOfflineSync();
+
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -30,49 +39,26 @@ export const App: React.FC<AppProps> = ({ user }) => {
   const [patientToDeleteId, setPatientToDeleteId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'roomNumber' | 'name'>('roomNumber');
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Use custom hooks for filtering and sorting
+  const filteredPatients = usePatientFiltering(patients, searchTerm);
+  const sortedPatients = usePatientSorting(filteredPatients, sortBy);
+  const { activePatients, dischargedPatients } = usePatientGrouping(sortedPatients);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
     } catch (error) {
       console.error('Lỗi khi đăng xuất:', error);
-      alert('Không thể đăng xuất. Vui lòng thử lại.');
+      setNotification({ type: 'error', message: ERROR_MESSAGES.AUTH_ERROR });
     }
   };
 
-  const { activePatients, dischargedPatients } = useMemo(() => {
-    const filtered = patients.filter(p =>
-      (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.patientCode || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    const active = filtered
-      .filter(p => p.status !== AdmissionStatus.DISCHARGED)
-      .sort((a, b) => {
-        if (sortBy === 'name') {
-          return (a.name || '').localeCompare(b.name || '', 'vi');
-        }
-        return (a.roomNumber || '').localeCompare(b.roomNumber || '', undefined, { numeric: true });
-      });
-    
-    const discharged = filtered
-      .filter(p => p.status === AdmissionStatus.DISCHARGED)
-      .sort((a, b) => {
-        const lastUpdateA = a.history?.[a.history.length - 1]?.date;
-        const lastUpdateB = b.history?.[b.history.length - 1]?.date;
-
-        if (lastUpdateA && lastUpdateB) {
-          if (lastUpdateB > lastUpdateA) return 1;
-          if (lastUpdateB < lastUpdateA) return -1;
-        }
-        if (lastUpdateB) return 1;
-        if (lastUpdateA) return -1;
-
-        return (a.name || '').localeCompare(b.name || '', 'vi');
-      });
-    
-    return { activePatients: active, dischargedPatients: discharged };
-  }, [patients, searchTerm, sortBy]);
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const patientToDelete = useMemo(() => 
     patientToDeleteId ? patients.find(p => p.id === patientToDeleteId) : null,
@@ -98,10 +84,17 @@ export const App: React.FC<AppProps> = ({ user }) => {
     if (!patientToDeleteId) return;
 
     try {
-      await deletePatient(patientToDeleteId);
+      if (isOnline) {
+        await deletePatient(patientToDeleteId);
+        showNotification('success', SUCCESS_MESSAGES.PATIENT_DELETED);
+      } else {
+        addPendingChange({ type: 'delete', patientId: patientToDeleteId });
+        showNotification('success', 'Đã lưu thay đổi offline. Sẽ đồng bộ khi có kết nối mạng.');
+      }
       setIsConfirmModalOpen(false);
     } catch (error) {
       console.error('Error deleting patient:', error);
+      showNotification('error', ERROR_MESSAGES.SERVER_ERROR);
     } finally {
       setPatientToDeleteId(null);
     }
@@ -122,7 +115,13 @@ export const App: React.FC<AppProps> = ({ user }) => {
           history: [...(patientToEdit?.history || []), newHistoryEntry],
         };
 
-        await updatePatient(patientData.id, updatedPatient);
+        if (isOnline) {
+          await updatePatient(patientData.id, updatedPatient);
+          showNotification('success', SUCCESS_MESSAGES.PATIENT_UPDATED);
+        } else {
+          addPendingChange({ type: 'update', patientId: patientData.id, data: updatedPatient });
+          showNotification('success', 'Đã lưu thay đổi offline. Sẽ đồng bộ khi có kết nối mạng.');
+        }
       } else {
         // ADD
         const newHistoryEntry = {
@@ -136,24 +135,67 @@ export const App: React.FC<AppProps> = ({ user }) => {
           history: [newHistoryEntry],
         };
 
-        await addPatient(newPatient);
+        if (isOnline) {
+          await addPatient(newPatient);
+          showNotification('success', SUCCESS_MESSAGES.PATIENT_ADDED);
+        } else {
+          addPendingChange({ type: 'add', data: newPatient });
+          showNotification('success', 'Đã lưu thay đổi offline. Sẽ đồng bộ khi có kết nối mạng.');
+        }
       }
       
       setIsFormModalOpen(false);
     } catch (error) {
       console.error('Error saving patient:', error);
+      showNotification('error', ERROR_MESSAGES.SERVER_ERROR);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800 flex flex-col">
+      {/* Notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg ${
+          notification.type === 'success' 
+            ? 'bg-green-100 text-green-800 border border-green-200' 
+            : 'bg-red-100 text-red-800 border border-red-200'
+        }`}>
+          <div className="flex items-center">
+            <span className="mr-2">
+              {notification.type === 'success' ? '✓' : '⚠'}
+            </span>
+            {notification.message}
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-4 text-lg font-bold hover:opacity-70"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Offline Indicator */}
+      {!isOnline && (
+        <div className="bg-yellow-100 text-yellow-800 text-center py-2 text-sm font-medium">
+          🔌 Bạn đang offline. Các thay đổi sẽ được đồng bộ khi có kết nối mạng.
+        </div>
+      )}
+
       <header className="bg-white shadow-md no-print">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-indigo-600">
               Quản lý bệnh nhân nội trú Ung bướu
             </h1>
-            <SyncStatusIndicator status={syncStatus} />
+            <div className="flex items-center space-x-4">
+              <SyncStatusIndicator status={syncStatus} />
+              {hasOfflineData && (
+                <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                  Có dữ liệu offline
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
             <div className="flex items-center space-x-3">
@@ -274,11 +316,15 @@ export const App: React.FC<AppProps> = ({ user }) => {
               </h2>
             </div>
             <DesktopHeader />
-            <PatientTable 
-              patients={activePatients} 
-              onEdit={handleEditPatientClick} 
-              onDelete={handleDeletePatientClick} 
-            />
+            {syncStatus.status === 'loading' ? (
+              <PatientTableSkeleton count={5} />
+            ) : (
+              <PatientTable 
+                patients={activePatients} 
+                onEdit={handleEditPatientClick} 
+                onDelete={handleDeletePatientClick} 
+              />
+            )}
             {syncStatus.status !== 'loading' && activePatients.length === 0 && (
               <div className="text-center py-10 text-gray-500">
                 <p>
@@ -298,11 +344,15 @@ export const App: React.FC<AppProps> = ({ user }) => {
               </h2>
             </div>
             <DesktopHeader />
-            <PatientTable 
-              patients={dischargedPatients} 
-              onEdit={handleEditPatientClick} 
-              onDelete={handleDeletePatientClick} 
-            />
+            {syncStatus.status === 'loading' ? (
+              <PatientTableSkeleton count={3} />
+            ) : (
+              <PatientTable 
+                patients={dischargedPatients} 
+                onEdit={handleEditPatientClick} 
+                onDelete={handleDeletePatientClick} 
+              />
+            )}
             {syncStatus.status !== 'loading' && dischargedPatients.length === 0 && (
               <div className="text-center py-10 text-gray-500">
                 <p>
@@ -345,10 +395,12 @@ export const App: React.FC<AppProps> = ({ user }) => {
         onClose={() => setIsReportModalOpen(false)} 
         title="Báo Cáo Hàng Ngày"
       >
-        <ReportView 
-          patients={patients} 
-          onClose={() => setIsReportModalOpen(false)} 
-        />
+        <Suspense fallback={<LoadingSpinner size="lg" text="Đang tải báo cáo..." />}>
+          <ReportView 
+            patients={patients} 
+            onClose={() => setIsReportModalOpen(false)} 
+          />
+        </Suspense>
       </Modal>
 
       <ConfirmModal 

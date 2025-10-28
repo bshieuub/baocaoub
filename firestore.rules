@@ -1,14 +1,40 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Patients collection - only authenticated users can read/write
+    // Patients collection - only authenticated users can read/write with validation
     match /patients/{document} {
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null 
+        && isValidPatientData(request.resource.data)
+        && isValidUser(request.auth);
     }
     
     // Deny all other collections
     match /{document=**} {
       allow read, write: if false;
     }
+  }
+  
+  // Validation functions
+  function isValidPatientData(data) {
+    return data.keys().hasAll(['name', 'patientCode', 'roomNumber', 'diagnosis', 'status'])
+      && data.name is string
+      && data.patientCode is string
+      && data.roomNumber is string
+      && data.diagnosis is string
+      && data.status in ['Nội trú', 'Ra viện', 'Dự kiến ra viện']
+      && data.name.size() >= 2
+      && data.name.size() <= 100
+      && data.patientCode.size() >= 3
+      && data.patientCode.size() <= 20
+      && data.roomNumber.size() >= 1
+      && data.roomNumber.size() <= 10
+      && data.diagnosis.size() >= 3
+      && data.diagnosis.size() <= 500;
+  }
+  
+  function isValidUser(auth) {
+    return auth != null
+      && auth.token.email_verified == true
+      && auth.token.email.matches('.*@.*\\.com$');
   }
 }
