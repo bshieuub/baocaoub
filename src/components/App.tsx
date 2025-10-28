@@ -12,6 +12,8 @@ import { ConfirmModal } from './ConfirmModal';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { LoadingSpinner } from './LoadingSpinner';
 import { PatientTableSkeleton } from './PatientTableSkeleton';
+import { PWAInstallPrompt } from './PWAInstallPrompt';
+import { PWAStatus } from './PWAStatus';
 import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../constants';
 
 // Lazy load heavy components
@@ -190,6 +192,7 @@ export const App: React.FC<AppProps> = ({ user }) => {
             </h1>
             <div className="flex items-center space-x-4">
               <SyncStatusIndicator status={syncStatus} />
+              <PWAStatus />
               {hasOfflineData && (
                 <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
                   Có dữ liệu offline
@@ -418,6 +421,9 @@ export const App: React.FC<AppProps> = ({ user }) => {
           Hành động này không thể được hoàn tác.
         </p>
       </ConfirmModal>
+
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
     </div>
   );
 };
