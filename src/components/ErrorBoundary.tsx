@@ -1,12 +1,16 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { ERROR_MESSAGES } from '../constants';
 
 interface Props {
   children: ReactNode;
+  fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
   hasError: boolean;
   error?: Error;
+  errorInfo?: ErrorInfo;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -20,10 +24,36 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+    
+    // Call custom error handler if provided
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo);
+    }
+
+    // Log to external service in production
+    if (process.env.NODE_ENV === 'production') {
+      // Here you would typically send to error tracking service
+      console.error('Production error:', { error, errorInfo });
+    }
+
+    this.setState({ error, errorInfo });
   }
+
+  private handleRetry = () => {
+    this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+  };
+
+  private handleReload = () => {
+    window.location.reload();
+  };
 
   public render() {
     if (this.state.hasError) {
+      // Use custom fallback if provided
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-100">
           <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6">
@@ -36,24 +66,35 @@ export class ErrorBoundary extends Component<Props, State> {
               Đã xảy ra lỗi
             </h2>
             <p className="text-sm text-gray-600 text-center mb-4">
-              Ứng dụng gặp sự cố không mong muốn. Vui lòng tải lại trang.
+              {ERROR_MESSAGES.UNKNOWN_ERROR}
             </p>
-            <div className="text-center">
+            
+            {process.env.NODE_ENV === 'development' && this.state.error && (
+              <details className="mb-4 text-left">
+                <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
+                  Chi tiết lỗi (Development)
+                </summary>
+                <pre className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded overflow-auto">
+                  {this.state.error.toString()}
+                  {this.state.errorInfo?.componentStack}
+                </pre>
+              </details>
+            )}
+            
+            <div className="flex space-x-3 justify-center">
               <button
-                onClick={() => window.location.reload()}
+                onClick={this.handleRetry}
+                className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                Thử lại
+              </button>
+              <button
+                onClick={this.handleReload}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
               >
                 Tải lại trang
               </button>
             </div>
-            {this.state.error && (
-              <details className="mt-4 text-xs text-gray-500">
-                <summary className="cursor-pointer">Chi tiết lỗi</summary>
-                <pre className="mt-2 p-2 bg-gray-100 rounded overflow-auto">
-                  {this.state.error.message}
-                </pre>
-              </details>
-            )}
           </div>
         </div>
       );
