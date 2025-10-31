@@ -61,10 +61,10 @@ export const validatePatientForm = (data: PatientFormData): ValidationError[] =>
       field: 'roomNumber',
       message: 'Số phòng không được để trống'
     });
-  } else if (!validateRoomNumber(data.roomNumber.toUpperCase())) {
+  } else if (!validateRoomNumber(data.roomNumber)) {
     errors.push({
       field: 'roomNumber',
-      message: 'Số phòng chỉ được chứa chữ cái và số (1-10 ký tự)'
+      message: 'Số phòng không được vượt quá 50 ký tự'
     });
   }
 
@@ -114,15 +114,26 @@ export const validatePatientForm = (data: PatientFormData): ValidationError[] =>
   return errors;
 };
 
-export const sanitizeInput = (input: string): string => {
-  return input
+export interface SanitizeInputOptions {
+  skipCharacterWhitelist?: boolean;
+  maxLength?: number;
+}
+
+export const sanitizeInput = (input: string, options: SanitizeInputOptions = {}): string => {
+  const { skipCharacterWhitelist = false, maxLength = 1000 } = options;
+
+  let sanitized = input
     .replace(/^\s+/, '') // Only remove leading whitespace, allow trailing spaces during typing
     .replace(/[<>]/g, '') // Remove potential HTML tags
     .replace(/javascript:/gi, '') // Remove javascript: protocol
     .replace(/on\w+\s*=/gi, '') // Remove event handlers
-    .replace(/script/gi, '') // Remove script tags
-    .replace(/[^\w\s\u00C0-\u1EF9.,!?()-]/g, '') // Only allow Vietnamese characters, basic punctuation
-    .substring(0, 1000); // Limit length
+    .replace(/script/gi, ''); // Remove script tags
+
+  if (!skipCharacterWhitelist) {
+    sanitized = sanitized.replace(/[^\w\s\u00C0-\u1EF9.,!?()-]/g, ''); // Only allow Vietnamese characters, basic punctuation
+  }
+
+  return sanitized.substring(0, maxLength); // Limit length
 };
 
 export const sanitizeHtml = (input: string): string => {
@@ -146,8 +157,12 @@ export const validatePatientCode = (code: string): boolean => {
 };
 
 export const validateRoomNumber = (room: string): boolean => {
-  const roomRegex = /^[A-Z0-9]{1,10}$/;
-  return roomRegex.test(room);
+  if (typeof room !== 'string') {
+    return false;
+  }
+
+  const trimmed = room.trim();
+  return trimmed.length > 0 && trimmed.length <= 50;
 };
 
 export const validateEmail = (email: string): boolean => {
