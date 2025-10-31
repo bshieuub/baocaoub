@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Patient } from '../types/patient';
+import { Patient, AdmissionStatus } from '../types/patient';
 import { exportPatients, exportPatientsCSV, importPatients, generateBackup } from '../utils/dataExport';
 import { LoadingSpinner } from './LoadingSpinner';
 
@@ -163,19 +163,19 @@ export const DataManagement: React.FC<DataManagementProps> = ({
             <div>
               <p className="text-gray-500">Đang điều trị</p>
               <p className="font-semibold text-lg text-blue-600">
-                {patients.filter(p => p.status !== 'Ra viện').length}
+                {patients.filter(p => p.status !== AdmissionStatus.DISCHARGED).length}
               </p>
             </div>
             <div>
               <p className="text-gray-500">Đã ra viện</p>
               <p className="font-semibold text-lg text-green-600">
-                {patients.filter(p => p.status === 'Ra viện').length}
+                {patients.filter(p => p.status === AdmissionStatus.DISCHARGED).length}
               </p>
             </div>
             <div>
               <p className="text-gray-500">Dự kiến ra viện</p>
               <p className="font-semibold text-lg text-yellow-600">
-                {patients.filter(p => p.status === 'Dự kiến ra viện').length}
+                {patients.filter(p => p.status === AdmissionStatus.DISCHARGE_TODAY).length}
               </p>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Patient } from '../types/patient';
+import { Patient, AdmissionStatus } from '../types/patient';
 import { UI_CONFIG } from '../constants';
 
 export const usePatientFiltering = (patients: Patient[], searchTerm: string) => {
@@ -32,9 +32,27 @@ export const usePatientSorting = (patients: Patient[], sortBy: 'roomNumber' | 'n
 
 export const usePatientGrouping = (patients: Patient[]) => {
   return useMemo(() => {
-    const activePatients = patients.filter(p => p.status !== 'Ra viện');
-    const dischargedPatients = patients.filter(p => p.status === 'Ra viện');
+    const activePatients = patients.filter(p => p.status !== AdmissionStatus.DISCHARGED);
+    const dischargedPatients = patients.filter(p => p.status === AdmissionStatus.DISCHARGED);
     
     return { activePatients, dischargedPatients };
+  }, [patients]);
+};
+
+const getDischargeTimestamp = (patient: Patient) =>
+  patient.dischargedAt || patient.updatedAt || patient.createdAt || '';
+
+export const useDischargedPatientSorting = (patients: Patient[]) => {
+  return useMemo(() => {
+    return [...patients].sort((a, b) => {
+      const dateA = getDischargeTimestamp(a);
+      const dateB = getDischargeTimestamp(b);
+
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+
+      return dateB.localeCompare(dateA);
+    });
   }, [patients]);
 };

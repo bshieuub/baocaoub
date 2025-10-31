@@ -40,6 +40,7 @@ export interface Patient {
   surgeryDetails?: SurgeryDetails;
   createdAt?: string;
   updatedAt?: string;
+  dischargedAt?: string | null;
 }
 
 export interface PatientFormData {

@@ -2,9 +2,9 @@ import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { usePatients } from '../hooks/usePatients';
-import { usePatientFiltering, usePatientSorting, usePatientGrouping } from '../hooks/usePatientFiltering';
+import { usePatientFiltering, usePatientSorting, usePatientGrouping, useDischargedPatientSorting } from '../hooks/usePatientFiltering';
 import { useOfflineSync } from '../hooks/useOfflineSync';
-import { Patient } from '../types/patient';
+import { Patient, AdmissionStatus } from '../types/patient';
 import { Modal } from './Modal';
 import { PatientForm } from './PatientForm';
 import { PatientTable, DesktopHeader } from './PatientTable';
@@ -45,8 +45,9 @@ export const App: React.FC<AppProps> = ({ user }) => {
 
   // Use custom hooks for filtering and sorting
   const filteredPatients = usePatientFiltering(patients, searchTerm);
-  const sortedPatients = usePatientSorting(filteredPatients, sortBy);
-  const { activePatients, dischargedPatients } = usePatientGrouping(sortedPatients);
+  const { activePatients, dischargedPatients } = usePatientGrouping(filteredPatients);
+  const sortedActivePatients = usePatientSorting(activePatients, sortBy);
+  const sortedDischargedPatients = useDischargedPatientSorting(dischargedPatients);
 
   const handleLogout = async () => {
     try {
@@ -104,17 +105,34 @@ export const App: React.FC<AppProps> = ({ user }) => {
   
   const handleSavePatient = async (patientData: any) => {
     try {
+      const now = new Date().toISOString();
+
       if (patientData.id) {
         // UPDATE
         const newHistoryEntry = {
-          date: new Date().toISOString(),
+          date: now,
           diagnosis: patientData.diagnosis,
           notes: patientData.newNote || '',
         };
 
+        const statusChangedToDischarged =
+          patientToEdit?.status !== AdmissionStatus.DISCHARGED &&
+          patientData.status === AdmissionStatus.DISCHARGED;
+        const statusChangedFromDischarged =
+          patientToEdit?.status === AdmissionStatus.DISCHARGED &&
+          patientData.status !== AdmissionStatus.DISCHARGED;
+
+        let dischargedAt = patientToEdit?.dischargedAt ?? null;
+        if (statusChangedToDischarged) {
+          dischargedAt = now;
+        } else if (statusChangedFromDischarged) {
+          dischargedAt = null;
+        }
+
         const updatedPatient = {
           ...patientData,
           history: [...(patientToEdit?.history || []), newHistoryEntry],
+          dischargedAt,
         };
 
         if (isOnline) {
@@ -127,7 +145,7 @@ export const App: React.FC<AppProps> = ({ user }) => {
       } else {
         // ADD
         const newHistoryEntry = {
-          date: new Date().toISOString(),
+          date: now,
           diagnosis: patientData.diagnosis,
           notes: patientData.notes || patientData.newNote || '',
         };
@@ -135,6 +153,7 @@ export const App: React.FC<AppProps> = ({ user }) => {
         const newPatient = {
           ...patientData,
           history: [newHistoryEntry],
+          dischargedAt: patientData.status === AdmissionStatus.DISCHARGED ? now : null,
         };
 
         if (isOnline) {
@@ -315,7 +334,7 @@ export const App: React.FC<AppProps> = ({ user }) => {
           <div className="overflow-x-auto">
             <div className="px-6 pt-6 pb-2">
               <h2 className="text-xl font-semibold text-gray-800">
-                Bệnh nhân đang điều trị ({activePatients.length})
+                Bệnh nhân đang điều trị ({sortedActivePatients.length})
               </h2>
             </div>
             <DesktopHeader />
@@ -323,12 +342,12 @@ export const App: React.FC<AppProps> = ({ user }) => {
               <PatientTableSkeleton count={5} />
             ) : (
               <PatientTable 
-                patients={activePatients} 
+                patients={sortedActivePatients} 
                 onEdit={handleEditPatientClick} 
                 onDelete={handleDeletePatientClick} 
               />
             )}
-            {syncStatus.status !== 'loading' && activePatients.length === 0 && (
+            {syncStatus.status !== 'loading' && sortedActivePatients.length === 0 && (
               <div className="text-center py-10 text-gray-500">
                 <p>
                   {searchTerm 
@@ -343,7 +362,7 @@ export const App: React.FC<AppProps> = ({ user }) => {
           <div className="mt-6 border-t overflow-x-auto">
             <div className="px-6 pt-6 pb-2">
               <h2 className="text-xl font-semibold text-gray-800">
-                Bệnh nhân đã ra viện ({dischargedPatients.length})
+                Bệnh nhân đã ra viện ({sortedDischargedPatients.length})
               </h2>
             </div>
             <DesktopHeader />
@@ -351,12 +370,12 @@ export const App: React.FC<AppProps> = ({ user }) => {
               <PatientTableSkeleton count={3} />
             ) : (
               <PatientTable 
-                patients={dischargedPatients} 
+                patients={sortedDischargedPatients} 
                 onEdit={handleEditPatientClick} 
                 onDelete={handleDeletePatientClick} 
               />
             )}
-            {syncStatus.status !== 'loading' && dischargedPatients.length === 0 && (
+            {syncStatus.status !== 'loading' && sortedDischargedPatients.length === 0 && (
               <div className="text-center py-10 text-gray-500">
                 <p>
                   {searchTerm 
