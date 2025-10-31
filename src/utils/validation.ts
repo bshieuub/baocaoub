@@ -129,12 +129,19 @@ export const sanitizeInput = (input: string, options: SanitizeInputOptions = {})
     .replace(/on\w+\s*=/gi, ''); // Remove event handlers
 
   // Normalize composed characters (e.g., Vietnamese tone marks) to preserve accents correctly
+  // Use NFC normalization to ensure proper Vietnamese character composition
   sanitized = sanitized.normalize('NFC');
 
   sanitized = sanitized.replace(/script/gi, ''); // Remove script keywords after normalization
 
   if (!skipCharacterWhitelist) {
-    sanitized = sanitized.replace(/[^\w\s\u00C0-\u1EF9\u0300-\u036F.,!?()-]/gu, ''); // Allow Vietnamese diacritics and combining marks
+    // Enhanced Vietnamese character support including all Unicode ranges for Vietnamese
+    // \u00C0-\u00FF: Latin Extended-A (basic accented characters)
+    // \u0100-\u017F: Latin Extended-A (additional)
+    // \u0180-\u024F: Latin Extended-B
+    // \u1E00-\u1EFF: Latin Extended Additional (Vietnamese tone marks)
+    // \u0300-\u036F: Combining Diacritical Marks
+    sanitized = sanitized.replace(/[^\w\s\u00C0-\u00FF\u0100-\u024F\u1E00-\u1EFF\u0300-\u036F.,!?()/-]/gu, '');
   }
 
   return sanitized.substring(0, maxLength); // Limit length
