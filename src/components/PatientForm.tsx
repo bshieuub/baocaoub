@@ -74,14 +74,18 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    const nativeEvent = e.nativeEvent as InputEvent & { inputType?: string; isComposing?: boolean };
+    const isExplicitlyComposing = nativeEvent?.isComposing ?? false;
+    const isPotentialCompositionInput = nativeEvent?.inputType === 'insertCompositionText';
+    const shouldDeferSanitize = isExplicitlyComposing || (isPotentialCompositionInput && nativeEvent?.isComposing !== false);
+
     const sanitizedValue = name === 'roomNumber'
       ? sanitizeInput(value, { skipCharacterWhitelist: true, maxLength: 50 })
       : sanitizeInput(value);
-    
-    setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
-    
-    // Clear error for this field when user starts typing
-    if (errors.length > 0) {
+
+    setFormData(prev => ({ ...prev, [name]: shouldDeferSanitize ? value : sanitizedValue }));
+
+    if (!shouldDeferSanitize && errors.length > 0) {
       setErrors(prev => prev.filter(error => error.field !== name));
     }
   };
