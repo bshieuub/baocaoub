@@ -1,4 +1,4 @@
-import { Patient } from '../types/patient';
+import { Patient, AdmissionStatus } from '../types/patient';
 
 export const exportPatients = (patients: Patient[], filename?: string) => {
   const dataStr = JSON.stringify(patients, null, 2);
@@ -24,7 +24,8 @@ export const exportPatientsCSV = (patients: Patient[], filename?: string) => {
     'Ghi chú',
     'Hướng điều trị',
     'Ngày tạo',
-    'Ngày cập nhật'
+    'Ngày cập nhật',
+    'Ngày ra viện'
   ];
 
   const csvContent = [
@@ -40,7 +41,8 @@ export const exportPatientsCSV = (patients: Patient[], filename?: string) => {
       `"${patient.notes || ''}"`,
       `"${patient.treatmentOptions?.join('; ') || ''}"`,
       patient.createdAt || '',
-      patient.updatedAt || ''
+      patient.updatedAt || '',
+      patient.dischargedAt || ''
     ].join(','))
   ].join('\n');
 
@@ -101,8 +103,8 @@ export const generateBackup = (patients: Patient[]) => {
     data: patients,
     metadata: {
       totalPatients: patients.length,
-      activePatients: patients.filter(p => p.status !== 'Ra viện').length,
-      dischargedPatients: patients.filter(p => p.status === 'Ra viện').length,
+      activePatients: patients.filter(p => p.status !== AdmissionStatus.DISCHARGED).length,
+      dischargedPatients: patients.filter(p => p.status === AdmissionStatus.DISCHARGED).length,
     }
   };
   
