@@ -59,12 +59,18 @@ describe('Validation Utils', () => {
       });
     });
 
-    it('should fail validation for invalid room number', () => {
-      const data = { ...validFormData, roomNumber: '101-A' };
+    it('should allow room numbers with special characters', () => {
+      const data = { ...validFormData, roomNumber: 'Tầng 3 - Phòng #12/A' };
+      const errors = validatePatientForm(data);
+      expect(errors).not.toContainEqual(expect.objectContaining({ field: 'roomNumber' }));
+    });
+
+    it('should fail validation for room number that is too long', () => {
+      const data = { ...validFormData, roomNumber: 'A'.repeat(51) };
       const errors = validatePatientForm(data);
       expect(errors).toContainEqual({
         field: 'roomNumber',
-        message: 'Số phòng chỉ được chứa chữ cái và số (1-10 ký tự)'
+        message: 'Số phòng không được vượt quá 50 ký tự'
       });
     });
 
@@ -107,6 +113,10 @@ describe('Validation Utils', () => {
 
     it('should preserve Vietnamese characters', () => {
       expect(sanitizeInput('Nguyễn Văn A')).toBe('Nguyễn Văn A');
+    });
+
+    it('should keep additional characters when whitelist skipped', () => {
+      expect(sanitizeInput('Phòng #12/A', { skipCharacterWhitelist: true, maxLength: 50 })).toBe('Phòng #12/A');
     });
   });
 
@@ -152,19 +162,18 @@ describe('Validation Utils', () => {
   });
 
   describe('validateRoomNumber', () => {
-    it('should accept valid room numbers', () => {
-      expect(validateRoomNumber('101')).toBe(true);
-      expect(validateRoomNumber('A101')).toBe(true);
-      expect(validateRoomNumber('12B')).toBe(true);
-    });
-
-    it('should reject room numbers with special characters', () => {
-      expect(validateRoomNumber('101-A')).toBe(false);
-      expect(validateRoomNumber('101_2')).toBe(false);
+    it('should accept room numbers with special characters', () => {
+      expect(validateRoomNumber('Phòng #3A/2')).toBe(true);
+      expect(validateRoomNumber('Tầng 5 - ICU')).toBe(true);
     });
 
     it('should reject empty room numbers', () => {
       expect(validateRoomNumber('')).toBe(false);
+      expect(validateRoomNumber('   ')).toBe(false);
+    });
+
+    it('should reject room numbers that exceed length limit', () => {
+      expect(validateRoomNumber('A'.repeat(51))).toBe(false);
     });
   });
 

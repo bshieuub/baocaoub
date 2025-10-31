@@ -74,7 +74,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const sanitizedValue = sanitizeInput(value);
+    const sanitizedValue = name === 'roomNumber'
+      ? sanitizeInput(value, { skipCharacterWhitelist: true, maxLength: 50 })
+      : sanitizeInput(value);
     
     setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
     
@@ -224,7 +226,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
               errors.find(e => e.field === 'roomNumber') ? 'border-red-500' : 'border-gray-300'
             }`}
             required
-            maxLength={10}
+            maxLength={50}
           />
           {errors.find(e => e.field === 'roomNumber') && (
             <p className="mt-1 text-sm text-red-600">
