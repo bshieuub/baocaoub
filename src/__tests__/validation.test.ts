@@ -115,6 +115,11 @@ describe('Validation Utils', () => {
       expect(sanitizeInput('Nguyễn Văn A')).toBe('Nguyễn Văn A');
     });
 
+    it('should preserve Vietnamese characters with combining accents', () => {
+      const combiningForm = 'Tiếng Việt'.normalize('NFD');
+      expect(sanitizeInput(combiningForm)).toBe('Tiếng Việt');
+    });
+
     it('should keep additional characters when whitelist skipped', () => {
       expect(sanitizeInput('Phòng #12/A', { skipCharacterWhitelist: true, maxLength: 50 })).toBe('Phòng #12/A');
     });

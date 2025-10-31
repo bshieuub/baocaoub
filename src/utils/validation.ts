@@ -126,11 +126,15 @@ export const sanitizeInput = (input: string, options: SanitizeInputOptions = {})
     .replace(/^\s+/, '') // Only remove leading whitespace, allow trailing spaces during typing
     .replace(/[<>]/g, '') // Remove potential HTML tags
     .replace(/javascript:/gi, '') // Remove javascript: protocol
-    .replace(/on\w+\s*=/gi, '') // Remove event handlers
-    .replace(/script/gi, ''); // Remove script tags
+    .replace(/on\w+\s*=/gi, ''); // Remove event handlers
+
+  // Normalize composed characters (e.g., Vietnamese tone marks) to preserve accents correctly
+  sanitized = sanitized.normalize('NFC');
+
+  sanitized = sanitized.replace(/script/gi, ''); // Remove script keywords after normalization
 
   if (!skipCharacterWhitelist) {
-    sanitized = sanitized.replace(/[^\w\s\u00C0-\u1EF9.,!?()-]/g, ''); // Only allow Vietnamese characters, basic punctuation
+    sanitized = sanitized.replace(/[^\w\s\u00C0-\u1EF9\u0300-\u036F.,!?()-]/gu, ''); // Allow Vietnamese diacritics and combining marks
   }
 
   return sanitized.substring(0, maxLength); // Limit length
