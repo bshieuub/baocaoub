@@ -32,6 +32,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isComposing, setIsComposing] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     if (patientToEdit) {
@@ -72,20 +73,43 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     setErrors([]);
   }, [patientToEdit]);
 
+  const handleCompositionStart = (e: React.CompositionEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name } = e.currentTarget;
+    setIsComposing(prev => ({ ...prev, [name]: true }));
+  };
+
+  const handleCompositionEnd = (e: React.CompositionEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.currentTarget;
+    setIsComposing(prev => ({ ...prev, [name]: false }));
+    
+    // Apply sanitization after composition is complete
+    const sanitizedValue = name === 'roomNumber'
+      ? sanitizeInput(value, { skipCharacterWhitelist: true, maxLength: 50 })
+      : sanitizeInput(value);
+    
+    setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+    
+    if (errors.length > 0) {
+      setErrors(prev => prev.filter(error => error.field !== name));
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const nativeEvent = e.nativeEvent as InputEvent & { inputType?: string; isComposing?: boolean };
-    const isExplicitlyComposing = nativeEvent?.isComposing ?? false;
-    const isPotentialCompositionInput = nativeEvent?.inputType === 'insertCompositionText';
-    const shouldDeferSanitize = isExplicitlyComposing || (isPotentialCompositionInput && nativeEvent?.isComposing !== false);
+    
+    // If we're in composition mode (typing Vietnamese with Telex/VNI), don't sanitize yet
+    if (isComposing[name]) {
+      setFormData(prev => ({ ...prev, [name]: value }));
+      return;
+    }
 
     const sanitizedValue = name === 'roomNumber'
       ? sanitizeInput(value, { skipCharacterWhitelist: true, maxLength: 50 })
       : sanitizeInput(value);
 
-    setFormData(prev => ({ ...prev, [name]: shouldDeferSanitize ? value : sanitizedValue }));
+    setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
 
-    if (!shouldDeferSanitize && errors.length > 0) {
+    if (errors.length > 0) {
       setErrors(prev => prev.filter(error => error.field !== name));
     }
   };
@@ -159,6 +183,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
             name="name"
             value={formData.name}
             onChange={handleChange}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
             className={`mt-1 block w-full border rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 ${
               errors.find(e => e.field === 'name') ? 'border-red-500' : 'border-gray-300'
             }`}
@@ -204,6 +230,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
             name="patientCode"
             value={formData.patientCode}
             onChange={handleChange}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
             className={`mt-1 block w-full border rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 ${
               errors.find(e => e.field === 'patientCode') ? 'border-red-500' : 'border-gray-300'
             }`}
@@ -226,6 +254,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
             name="roomNumber"
             value={formData.roomNumber}
             onChange={handleChange}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
             className={`mt-1 block w-full border rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 ${
               errors.find(e => e.field === 'roomNumber') ? 'border-red-500' : 'border-gray-300'
             }`}
@@ -264,6 +294,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
           name="reason"
           value={formData.reason}
           onChange={handleChange}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           rows={3}
           className={`mt-1 block w-full border rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 ${
             errors.find(e => e.field === 'reason') ? 'border-red-500' : 'border-gray-300'
@@ -286,6 +318,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
           name="diagnosis"
           value={formData.diagnosis}
           onChange={handleChange}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           rows={3}
           className={`mt-1 block w-full border rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 ${
             errors.find(e => e.field === 'diagnosis') ? 'border-red-500' : 'border-gray-300'
@@ -334,6 +368,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
                 name="surgeryProcedure"
                 value={formData.surgeryProcedure}
                 onChange={handleChange}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                 maxLength={200}
               />
@@ -359,6 +395,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
                 name="surgeon"
                 value={formData.surgeon}
                 onChange={handleChange}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                 maxLength={100}
               />
@@ -372,6 +410,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
                 name="assistant1"
                 value={formData.assistant1}
                 onChange={handleChange}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                 maxLength={100}
               />
@@ -385,6 +425,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
                 name="assistant2"
                 value={formData.assistant2}
                 onChange={handleChange}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                 maxLength={100}
               />
@@ -401,6 +443,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
           name="newNote"
           value={formData.newNote}
           onChange={handleChange}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           placeholder="Thêm diễn biến, y lệnh, hoặc thông tin bàn giao mới..."
           rows={3}
           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
